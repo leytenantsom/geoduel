@@ -1,0 +1,2124 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>GEOMATRIX // GEO DUEL 01™ — Tactical Geography Terminal</title>
+  <!-- Кастомный векторный Favicon GEODUEL (никаких чужих значков хостинга!) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23ffffff'/%3E%3Ccircle cx='32' cy='32' r='22' fill='none' stroke='%23050608' stroke-width='4.5'/%3E%3Cellipse cx='32' cy='32' rx='10.5' ry='22' fill='none' stroke='%23050608' stroke-width='4'/%3E%3Cline x1='10' y1='32' x2='54' y2='32' stroke='%23050608' stroke-width='4'/%3E%3Cpath d='M14,20 H50 M14,44 H50' stroke='%23050608' stroke-width='3.5'/%3E%3C/svg%3E" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700;800&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-obsidian: #050608;
+      --card-bg: rgba(14, 17, 24, 0.42);
+      --card-border: rgba(255, 255, 255, 0.18);
+      --accent-white: #ffffff;
+    }
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-obsidian);
+      color: #f1f5f9;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .font-oswald {
+      font-family: 'Oswald', Impact, sans-serif;
+    }
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .bento-card {
+      background: linear-gradient(165deg, rgba(14, 17, 24, 0.44) 0%, rgba(7, 9, 13, 0.56) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-top: 1px solid rgba(255, 255, 255, 0.34);
+      border-radius: 16px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.16);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .tactical-btn {
+      background: linear-gradient(180deg, rgba(18, 22, 32, 0.48) 0%, rgba(9, 11, 17, 0.62) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      border-top: 1px solid rgba(255, 255, 255, 0.28);
+      border-radius: 12px;
+      color: #f1f5f9;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+      cursor: pointer;
+    }
+    .tactical-btn:hover:not(.active):not(:disabled) {
+      background: linear-gradient(180deg, rgba(36, 43, 58, 0.65) 0%, rgba(18, 22, 32, 0.78) 100%);
+      border-color: rgba(255, 255, 255, 0.4);
+      transform: translateY(-1px);
+    }
+    .tactical-btn.active {
+      background: #ffffff !important;
+      color: #07080b !important;
+      border-color: #ffffff !important;
+      box-shadow: 0 0 28px rgba(255, 255, 255, 0.42), inset 0 1px 0 rgba(255, 255, 255, 1);
+    }
+    .cta-white-btn {
+      background: #ffffff;
+      color: #07080b;
+      border: 1px solid #ffffff;
+      border-radius: 12px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      box-shadow: 0 0 32px rgba(255, 255, 255, 0.38);
+      transition: all 0.18s ease;
+      cursor: pointer;
+    }
+    .cta-white-btn:hover {
+      background: #e2e8f0;
+      box-shadow: 0 0 44px rgba(255, 255, 255, 0.55);
+      transform: translateY(-1px);
+    }
+    .cta-white-btn:active {
+      transform: scale(0.98);
+    }
+    /* Interactive Google-Maps-style Touch Surface */
+    .touch-map-viewport {
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      cursor: grab;
+    }
+    .touch-map-viewport:active {
+      cursor: grabbing;
+    }
+    /* Microstate paths hidden at 1x, revealed smoothly when zoomed in (>= 4.5x) */
+    .microstate-zoom-only {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease;
+    }
+    .map-zoomed-in .microstate-zoom-only {
+      opacity: 1;
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body class="relative min-h-screen">
+
+  <!-- =========================================================================
+       1. INTERZONE SATELLITE BACKGROUND (140x140 GRID & HIGH VISIBILITY)
+       ========================================================================= -->
+  <div class="fixed inset-0 pointer-events-none z-0 overflow-hidden bg-[#050608]">
+    <svg width="100%" height="100%" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice" class="absolute inset-0 w-full h-full">
+      <defs>
+        <filter id="interzoneSatelliteFilter" x="0%" y="0%" width="100%" height="100%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.0052" numOctaves="6" seed="24" result="rawTerrain" />
+          <feColorMatrix
+            type="matrix"
+            values="2.55 0    0    0 -0.64
+                    2.55 0    0    0 -0.63
+                    2.65 0    0    0 -0.60
+                    0    0   0    1  0"
+            in="rawTerrain"
+            result="crispTerrain"
+          />
+        </filter>
+        <filter id="urbanScatterFilter" x="0%" y="0%" width="100%" height="100%">
+          <feTurbulence type="turbulence" baseFrequency="0.028" numOctaves="3" seed="7" result="scatter" />
+          <feColorMatrix
+            type="matrix"
+            values="2.1 0   0   0 -0.72
+                    2.1 0   0   0 -0.72
+                    2.2 0   0   0 -0.70
+                    0   0   0   1  0"
+            in="scatter"
+          />
+        </filter>
+        <pattern id="tacticalGrid140" width="140" height="140" patternUnits="userSpaceOnUse">
+          <path d="M 140 0 L 0 0 0 140" fill="none" stroke="rgba(255,255,255,0.32)" stroke-width="0.95" />
+          <path d="M 70 0 L 70 140 M 0 70 L 140 70" fill="none" stroke="rgba(255,255,255,0.11)" stroke-width="0.65" stroke-dasharray="4,6" />
+          <path d="M -5.5,0 H 5.5 M 0,-5.5 V 5.5" stroke="rgba(255,255,255,0.9)" stroke-width="1.4" />
+          <path d="M 134.5,0 H 145.5 M 140,-5.5 V 5.5" stroke="rgba(255,255,255,0.9)" stroke-width="1.4" />
+          <path d="M -5.5,140 H 5.5 M 0,134.5 V 145.5" stroke="rgba(255,255,255,0.9)" stroke-width="1.4" />
+          <path d="M 66,70 H 74 M 70,66 V 74" stroke="rgba(255,255,255,0.55)" stroke-width="1.1" />
+        </pattern>
+        <pattern id="radarSubGrid" width="28" height="28" patternUnits="userSpaceOnUse">
+          <path d="M 28 0 L 0 0 0 28" fill="none" stroke="rgba(255,255,255,0.13)" stroke-width="0.6" />
+          <circle cx="14" cy="14" r="0.8" fill="rgba(255,255,255,0.3)" />
+        </pattern>
+        <pattern id="urbanCityGrid" width="18" height="18" patternTransform="rotate(24)" patternUnits="userSpaceOnUse">
+          <path d="M 18 0 L 0 0 0 18" fill="none" stroke="rgba(255,255,255,0.22)" stroke-width="0.55" />
+          <path d="M 9 0 L 9 18 M 0 9 L 18 9" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="0.4" />
+        </pattern>
+        <pattern id="cornerDots" width="14" height="14" patternUnits="userSpaceOnUse">
+          <circle cx="2.5" cy="2.5" r="1.2" fill="rgba(255,255,255,0.48)" />
+        </pattern>
+      </defs>
+
+      <rect width="1600" height="1000" fill="#040507" />
+      <rect width="1600" height="1000" filter="url(#interzoneSatelliteFilter)" opacity="0.72" />
+
+      <g opacity="0.9">
+        <path d="M -40,-20 L 680,-20 L 720,45 L 675,95 L 610,115 L 645,165 L 740,185 L 790,145 L 885,155 L 920,210 L 860,265 L 945,305 L 1060,285 L 1140,335 L 1085,410 L 995,435 L 950,395 L 880,425 L 915,495 L 985,535 L 940,610 L 1030,665 L 1095,640 L 1145,715 L 1060,795 L 990,855 L 1045,935 L 1010,1020 L -40,1020 Z"
+          fill="#151820" fill-opacity="0.58" stroke="rgba(255,255,255,0.58)" stroke-width="1.5" />
+        <path d="M 740,280 L 935,295 L 1045,345 L 980,430 L 855,415 L 765,360 Z"
+          fill="url(#urbanCityGrid)" stroke="rgba(255,255,255,0.42)" stroke-width="0.95" />
+        <path d="M 720,540 L 940,565 L 1065,675 L 995,825 L 810,775 L 735,660 Z"
+          fill="url(#urbanCityGrid)" stroke="rgba(255,255,255,0.42)" stroke-width="0.95" />
+        <rect x="420" y="160" width="760" height="720" filter="url(#urbanScatterFilter)" opacity="0.34" />
+        <path d="M 1190,340 L 1255,325 L 1280,365 L 1235,395 L 1185,375 Z" fill="#171b24" stroke="rgba(255,255,255,0.52)" stroke-width="1.1" />
+        <path d="M 1135,565 L 1175,555 L 1190,588 L 1150,602 Z" fill="#171b24" stroke="rgba(255,255,255,0.5)" stroke-width="1" />
+        <path d="M 1245,720 L 1295,710 L 1315,752 L 1265,768 Z" fill="#171b24" stroke="rgba(255,255,255,0.5)" stroke-width="1" />
+        <path d="M 85,40 Q 240,140 350,260 T 620,410 T 890,560 T 1045,730" fill="none" stroke="rgba(255,255,255,0.44)" stroke-width="1.25" />
+        <path d="M 210,-10 Q 340,190 520,280 T 830,450 T 980,680" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="0.95" stroke-dasharray="6,4" />
+        <circle cx="960" cy="490" r="310" fill="none" stroke="rgba(255,255,255,0.2)" stroke-width="0.9" stroke-dasharray="4,8" />
+      </g>
+
+      <rect x="24" y="24" width="224" height="126" fill="url(#cornerDots)" />
+      <rect x="1310" y="710" width="252" height="196" fill="url(#cornerDots)" />
+      <rect x="40" y="760" width="168" height="112" fill="url(#cornerDots)" />
+      <rect width="1600" height="1000" fill="url(#tacticalGrid140)" />
+    </svg>
+
+    <div class="hidden sm:block absolute top-5 left-6 font-mono-tech text-[10px] text-white/85 leading-relaxed border border-white/30 bg-black/40 backdrop-blur-sm px-3.5 py-2.5 rounded">
+      <div>SECTOR 7</div>
+      <div>ORBITAL SURVEILLANCE</div>
+      <div class="text-white font-bold mt-1">ZONE_03 // SCAN 88%</div>
+      <div>ELEV 1276M</div>
+    </div>
+
+    <div class="hidden sm:block absolute top-5 right-6 font-mono-tech text-[11px] text-white/90 text-right leading-relaxed bg-black/35 backdrop-blur-sm px-3.5 py-2 rounded border border-white/25">
+      <div>23° 00' 21.8" S</div>
+      <div>43° 12' 33.6" W</div>
+      <div class="text-[9px] text-white/65 mt-1 border-t border-white/20 pt-1">COASTAL REGION // SAT_VIEW</div>
+    </div>
+
+    <div class="hidden xl:flex absolute top-[52%] left-6 items-center gap-3">
+      <span class="font-oswald text-2xl tracking-[0.28em] text-white font-bold drop-shadow-[0_2px_10px_rgba(0,0,0,0.95)]">INTERZONE</span>
+      <span class="w-2.5 h-2.5 rounded-full bg-white inline-block shadow-[0_0_12px_#fff]"></span>
+      <span class="w-28 h-[1.5px] bg-white/85 inline-block"></span>
+    </div>
+
+    <div class="hidden sm:block absolute bottom-5 left-6 font-mono-tech text-[10px] text-white/80 leading-relaxed bg-black/35 px-3 py-1.5 rounded border border-white/20">
+      <div>SCAN : 100%</div>
+      <div>RES  : 0.5M</div>
+      <div>MODE : INFRA // GEODUEL</div>
+    </div>
+
+    <div class="hidden sm:block absolute bottom-5 right-6 font-mono-tech text-[10px] text-white/85 text-right bg-black/35 px-3.5 py-2 rounded border border-white/20">
+      <div>URBAN NODE // POP. 6.747.815</div>
+      <div class="tracking-[0.25em] text-xs text-white mt-1">||| || |||| | ||| |||| ||</div>
+    </div>
+
+    <div class="absolute inset-0" style="background: radial-gradient(circle at 50% 45%, rgba(5,6,8,0.02) 0%, rgba(4,5,7,0.36) 100%);"></div>
+  </div>
+
+  <!-- =========================================================================
+       2. MAIN APPLICATION CONTAINER
+       ========================================================================= -->
+  <div class="relative z-10 max-w-5xl mx-auto px-3.5 sm:px-4 pt-4 pb-14">
+
+    <header class="flex flex-wrap items-end justify-between gap-3 pb-4 mb-5 border-b border-white/25">
+      <div class="cursor-pointer group" onclick="app.showMenu()">
+        <div class="font-mono-tech text-[10px] text-white/80 tracking-[0.22em] mb-1 flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span>
+          <span>[ DOMAIN: GEODUEL // ORBITAL PROTOCOL 01 ]</span>
+        </div>
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-white text-black flex items-center justify-center shadow-[0_0_28px_rgba(255,255,255,0.45)] shrink-0">
+            <svg width="25" height="25" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="9.5" />
+              <ellipse cx="12" cy="12" rx="4.5" ry="9.5" />
+              <line x1="2.5" y1="12" x2="21.5" y2="12" />
+              <path d="M 4.5,7 H 19.5 M 4.5,17 H 19.5" />
+            </svg>
+          </div>
+          <h1 class="font-oswald uppercase text-white leading-[0.92] tracking-wider">
+            <span class="block text-lg sm:text-2xl text-white/80 tracking-[0.18em]">GEOMATRIX //</span>
+            <span class="block text-3xl sm:text-5xl font-bold text-white mt-0.5">
+              GEO DUEL<sup class="text-[11px] sm:text-sm font-mono-tech bg-white text-black px-1.5 py-0.5 rounded ml-1.5 align-super">01™</sup>
+            </span>
+          </h1>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <div id="geo-db-badge" class="font-mono-tech text-[10px] sm:text-[11px] text-white/95 bg-black/45 backdrop-blur-md border border-white/25 px-2.5 py-2 rounded-xl">
+          [ БАЗА: 195 СТРАН ]
+        </div>
+        <button id="sound-toggle-btn" onclick="app.toggleSound()" class="tactical-btn px-2.5 py-2 text-xs font-mono-tech flex items-center gap-1" title="Звуковые эффекты">
+          <span id="sound-label">SFX: ON</span>
+        </button>
+        <button id="back-menu-btn" onclick="app.showMenu()" class="hidden cta-white-btn px-3.5 py-2 text-xs font-mono-tech uppercase">
+          ← МЕНЮ
+        </button>
+      </div>
+    </header>
+
+    <main id="app-viewport"></main>
+
+  </div>
+
+  <!-- PeerJS for Real Browser-to-Browser Online 1v1 Room Sync -->
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+  <!-- =========================================================================
+       3. GAME ENGINE, TACTICAL COMBO+SPEED SCORING, 195 COUNTRIES & P2P SYNC
+       ========================================================================= -->
+  <script>
+    // -------------------------------------------------------------------------
+    // SOUND SYNTHESIZER
+    // -------------------------------------------------------------------------
+    class TacticalAudio {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+      init() {
+        if (!this.ctx && typeof window !== 'undefined') {
+          const AudioCtx = window.AudioContext || window.webkitAudioContext;
+          if (AudioCtx) this.ctx = new AudioCtx();
+        }
+      }
+      play(type) {
+        if (!this.enabled) return;
+        try {
+          this.init();
+          if (!this.ctx) return;
+          if (this.ctx.state === 'suspended') this.ctx.resume();
+          const now = this.ctx.currentTime;
+
+          if (type === 'click') {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(640, now);
+            osc.frequency.exponentialRampToValueAtTime(210, now + 0.04);
+            gain.gain.setValueAtTime(0.06, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.05);
+          } else if (type === 'correct') {
+            [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+              const osc = this.ctx.createOscillator();
+              const gain = this.ctx.createGain();
+              osc.type = 'triangle';
+              osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+              gain.gain.setValueAtTime(0.09, now + idx * 0.05);
+              gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.2);
+              osc.connect(gain);
+              gain.connect(this.ctx.destination);
+              osc.start(now + idx * 0.05);
+              osc.stop(now + idx * 0.05 + 0.22);
+            });
+          } else if (type === 'wrong') {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.linearRampToValueAtTime(88, now + 0.26);
+            gain.gain.setValueAtTime(0.09, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.29);
+          }
+        } catch (err) {}
+      }
+    }
+    const sfx = new TacticalAudio();
+
+    // -------------------------------------------------------------------------
+    // CUSTOM VECTOR SVG ICONS (0% EMOJIS)
+    // -------------------------------------------------------------------------
+    function getTacticalIcon(type, isActive = false, size = 22) {
+      const stroke = isActive ? '#08090c' : '#f1f5f9';
+      const fill = isActive ? '#08090c' : '#f1f5f9';
+      const ussrColor = isActive ? '#b91c1c' : '#ef4444';
+
+      switch (type) {
+        case 'postsov':
+          return `
+            <svg width="${size}" height="${size}" viewBox="0 0 32 32" fill="none" class="shrink-0">
+              <polygon points="16,1.8 17.3,4.8 20.5,5.1 18,7.2 18.8,10.3 16,8.6 13.2,10.3 14,7.2 11.5,5.1 14.7,4.8" fill="${ussrColor}" />
+              <path d="M 19.2,9.2 C 26.2,12 27.4,20.8 20.5,25.2 C 14.5,28.8 8.2,25.5 6.8,21.2 C 9.8,23.4 15.2,24.5 19.2,21.2 C 23,18 22.4,12.2 18.2,10.2 Z" fill="${ussrColor}" />
+              <path d="M 7.5,14.2 L 13.8,8.5 L 16.8,11.5 L 10.5,17.2 Z" fill="${ussrColor}" />
+              <path d="M 11.8,12.8 L 24.5,25.5 L 22.4,27.6 L 9.7,14.9 Z" fill="${ussrColor}" />
+              <path d="M 5.5,26.2 L 9.8,21.8 L 11.8,23.8 L 7.5,28.2 Z" fill="${ussrColor}" />
+            </svg>`;
+        case 'world':
+          return `
+            <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="1.8" class="shrink-0">
+              <circle cx="12" cy="12" r="9.5" />
+              <ellipse cx="12" cy="12" rx="4.6" ry="9.5" />
+              <line x1="2.5" y1="12" x2="21.5" y2="12" />
+              <path d="M 4.2,7.2 H 19.8 M 4.2,16.8 H 19.8 M 12,2.5 V 21.5" />
+            </svg>`;
+        case 'compass':
+          return `
+            <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="1.7" class="shrink-0">
+              <circle cx="12" cy="12" r="9.5" />
+              <polygon points="12,4.2 14.4,9.6 19.8,12 14.4,14.4 12,19.8 9.6,14.4 4.2,12 9.6,9.6" fill="${fill}" fill-opacity="0.2" stroke="${stroke}" stroke-width="1.4" />
+              <polygon points="16.5,7.5 13.6,13.6 7.5,16.5 10.4,10.4" fill="${fill}" stroke="none" />
+            </svg>`;
+        case 'silhouette':
+          return `
+            <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="1.8" class="shrink-0">
+              <path d="M 4.5,7.5 L 9.5,4 L 15.5,6.2 L 20,4.8 L 18.8,11 L 20.5,15.8 L 15.5,20 L 10,18.2 L 5,19.5 L 3.5,13.5 Z" fill="${fill}" fill-opacity="0.18" stroke-linejoin="round" />
+              <circle cx="19.5" cy="12.5" r="1.2" fill="${fill}" stroke="none" />
+            </svg>`;
+        case 'flag':
+          return `
+            <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="1.8" class="shrink-0">
+              <line x1="5" y1="3" x2="5" y2="21" stroke-linecap="round" />
+              <path d="M 5,4.2 L 20.5,9.8 L 5,15.5 Z" fill="${fill}" fill-opacity="0.18" stroke-linejoin="round" />
+              <text x="9.3" y="12.4" fill="${fill}" stroke="none" font-size="7.5" font-weight="900" font-family="monospace">?</text>
+            </svg>`;
+        case 'emblem':
+          return `
+            <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="1.7" class="shrink-0">
+              <path d="M 8,3.2 L 9.8,5.2 L 12,3.2 L 14.2,5.2 L 16,3.2 L 15.5,6 H 8.5 Z" fill="${fill}" />
+              <path d="M 5.5,7 H 18.5 V 12.8 C 18.5,17.4 12,20.8 12,20.8 C 12,20.8 5.5,17.4 5.5,12.8 Z" fill="${fill}" fill-opacity="0.16" />
+              <path d="M 8.2,14.5 L 12,10.2 L 15.8,14.5" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>`;
+        case 'map_pin':
+          return `
+            <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="1.8" class="shrink-0">
+              <circle cx="12" cy="12" r="7.5" />
+              <circle cx="12" cy="12" r="2.2" fill="${fill}" />
+              <path d="M 12,2 V 5.5 M 12,18.5 V 22 M 2,12 H 5.5 M 18.5,12 H 22" stroke-linecap="round" />
+            </svg>`;
+        case 'capital':
+          return `
+            <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="1.7" class="shrink-0">
+              <circle cx="12" cy="12" r="9.5" />
+              <path d="M 6.5,18.5 V 11.5 H 9.8 V 18.5 M 9.8,18.5 V 8.5 L 12,5.2 L 14.2,8.5 V 18.5 M 14.2,18.5 V 12 H 17.5 V 18.5" stroke-linejoin="round" />
+            </svg>`;
+        case 'text':
+          return `
+            <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="1.8" class="shrink-0">
+              <path d="M 7,6 H 4 V 18 H 7 M 17,6 H 20 V 18 H 17" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M 8.5,9.5 H 15.5 M 12,9.5 V 15.5" stroke-linecap="round" />
+            </svg>`;
+        case 'duel':
+          return `
+            <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="1.8" class="shrink-0">
+              <path d="M 4.5,19.5 L 19,5 M 19,5 H 14 M 19,5 V 10" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M 19.5,19.5 L 5,5 M 5,5 H 10 M 5,5 V 10" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>`;
+        case 'blitz':
+          return `
+            <svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="1.8" class="shrink-0">
+              <polygon points="13,2 4,14 11,14 10,22 20,10 13,10" fill="${fill}" fill-opacity="0.22" stroke-linejoin="round" />
+            </svg>`;
+        default:
+          return '';
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // BUILT-IN GEOGRAPHIC PATHS + CONTINENT BACKDROP
+    // -------------------------------------------------------------------------
+    const BUILTIN_GEO_PATHS = {
+      RU: "M 556.2,61.5 L 569.4,56.8 L 581.0,63.2 L 594.5,54.6 L 611.8,51.2 L 628.4,57.5 L 642.0,49.5 L 664.2,45.8 L 688.5,43.2 L 718.0,47.5 L 749.2,45.0 L 782.4,49.8 L 818.5,53.2 L 856.0,56.5 L 892.4,61.8 L 928.0,68.5 L 952.5,78.2 L 936.4,91.5 L 918.2,96.8 L 908.5,112.4 L 896.0,126.5 L 889.2,114.0 L 874.5,105.2 L 858.0,118.5 L 851.2,134.8 L 836.5,129.0 L 812.0,132.5 L 785.4,125.8 L 756.0,129.4 L 724.5,123.8 L 692.0,120.5 L 665.4,125.2 L 638.0,119.5 L 615.2,132.4 L 598.5,131.0 L 588.0,119.5 L 575.4,111.2 L 561.0,106.5 L 552.4,93.8 L 549.5,77.2 Z M 536.2,87.5 L 541.5,86.2 L 542.4,90.5 L 537.0,91.2 Z",
+      BY: "M 543.5,93.2 L 551.2,91.8 L 557.8,94.5 L 560.4,99.8 L 558.0,104.8 L 549.5,105.6 L 542.8,103.2 L 541.2,97.5 Z",
+      UA: "M 536.5,105.8 L 548.2,104.5 L 559.4,105.2 L 569.8,109.5 L 573.2,115.8 L 566.5,121.4 L 558.2,124.5 L 551.0,121.8 L 543.5,122.6 L 537.8,116.5 L 534.2,111.0 Z",
+      KZ: "M 594.0,118.5 L 612.5,115.2 L 634.8,114.5 L 658.2,117.0 L 679.5,120.8 L 688.4,129.5 L 682.0,138.2 L 668.5,144.5 L 649.2,145.8 L 631.0,141.5 L 616.5,145.2 L 604.2,141.8 L 596.5,133.5 L 589.8,125.2 Z",
+      UZ: "M 613.5,139.8 L 626.4,139.2 L 641.5,143.5 L 653.8,148.2 L 650.2,155.4 L 638.5,156.8 L 625.0,151.5 L 612.8,146.2 Z",
+      TM: "M 603.2,145.5 L 618.5,147.2 L 632.4,152.8 L 636.8,159.5 L 624.5,163.2 L 609.2,159.8 L 601.5,152.4 Z",
+      KG: "M 653.5,143.2 L 666.8,142.0 L 676.5,145.5 L 673.2,150.8 L 661.5,151.5 L 652.8,148.2 Z",
+      TJ: "M 648.5,150.8 L 661.2,150.5 L 667.8,154.2 L 664.5,159.5 L 652.0,159.2 L 647.2,155.0 Z",
+      GE: "M 574.5,128.2 L 583.8,127.5 L 591.5,130.8 L 589.2,135.2 L 579.5,134.8 L 573.8,131.5 Z",
+      AM: "M 583.8,134.8 L 589.5,134.5 L 592.4,139.8 L 587.2,141.5 L 583.2,138.2 Z",
+      AZ: "M 590.5,132.5 L 598.8,132.8 L 603.5,138.5 L 599.2,142.8 L 592.4,140.5 Z",
+      MD: "M 545.2,115.2 L 550.4,115.8 L 552.2,121.5 L 548.0,123.2 L 544.5,119.0 Z",
+      EE: "M 539.5,75.2 L 548.8,74.8 L 550.5,79.8 L 541.2,80.8 L 538.8,78.0 Z",
+      LV: "M 537.8,81.0 L 549.5,80.5 L 551.2,85.8 L 539.2,86.8 L 537.2,83.8 Z",
+      LT: "M 536.8,86.8 L 548.5,86.5 L 550.2,92.2 L 539.5,93.2 L 536.2,89.8 Z",
+      FR: "M 479.5,106.5 L 489.2,103.8 L 498.5,107.2 L 503.2,114.5 L 499.8,123.8 L 501.5,129.5 L 492.4,132.8 L 481.2,130.5 L 478.5,121.2 L 473.2,113.5 Z M 505.2,133.5 L 507.8,133.5 L 507.8,138.2 L 505.2,138.2 Z",
+      DE: "M 501.5,92.8 L 511.2,90.5 L 518.8,93.8 L 521.5,102.4 L 517.8,110.5 L 519.2,115.8 L 508.5,116.5 L 501.2,111.2 L 499.5,101.5 Z",
+      IT: "M 503.5,118.5 L 512.8,116.8 L 520.5,119.5 L 522.8,126.2 L 531.5,135.8 L 538.8,142.5 L 541.2,146.8 L 536.5,149.5 L 533.2,145.2 L 529.5,151.8 L 525.8,148.5 L 521.2,138.8 L 512.5,131.2 L 504.8,124.5 Z M 520.5,152.5 L 527.8,151.8 L 525.5,156.5 L 519.8,154.8 Z M 504.5,138.5 L 508.8,138.5 L 508.5,145.8 L 504.2,145.5 Z",
+      ES: "M 461.5,126.8 L 476.2,126.5 L 486.8,130.2 L 484.5,139.5 L 477.8,148.2 L 464.5,149.5 L 462.2,139.8 L 458.8,131.5 Z",
+      GB: "M 471.5,81.5 L 478.8,79.8 L 482.5,86.5 L 481.2,92.8 L 487.5,98.5 L 485.8,103.8 L 473.2,104.5 L 469.8,99.2 L 473.5,93.5 L 470.2,87.2 Z M 463.5,90.8 L 468.8,90.2 L 468.2,96.5 L 462.8,95.8 Z",
+      PL: "M 519.8,93.8 L 532.5,92.5 L 539.8,94.8 L 540.5,104.8 L 531.2,107.5 L 521.5,105.8 L 518.8,99.2 Z",
+      SE: "M 511.5,53.5 L 521.2,51.8 L 526.5,61.5 L 524.8,75.2 L 519.5,88.5 L 512.8,86.8 L 511.2,71.5 L 509.5,60.2 Z",
+      NO: "M 496.5,56.8 L 508.2,46.5 L 518.5,44.8 L 521.2,49.5 L 511.5,56.2 L 506.8,72.5 L 502.5,81.2 L 493.8,78.5 L 492.5,66.8 Z",
+      FI: "M 527.5,48.5 L 539.2,49.8 L 545.8,59.5 L 544.2,71.2 L 533.5,73.5 L 528.8,64.2 L 530.5,55.2 Z",
+      TR: "M 548.5,133.2 L 568.2,131.8 L 586.5,132.5 L 591.2,139.8 L 582.5,144.5 L 562.8,145.2 L 549.2,141.8 L 546.5,136.5 Z",
+      CN: "M 672.5,131.5 L 698.2,126.8 L 728.5,129.2 L 758.4,118.5 L 779.2,114.8 L 792.5,124.5 L 781.2,138.8 L 786.5,152.4 L 774.8,169.5 L 754.2,181.2 L 732.5,183.8 L 714.2,175.5 L 692.8,171.2 L 674.5,158.5 L 666.8,144.2 Z",
+      JP: "M 814.5,126.5 L 821.8,128.2 L 819.5,135.8 L 814.2,134.5 Z M 811.5,137.2 L 818.8,139.5 L 816.5,151.2 L 806.8,159.5 L 798.5,161.8 L 796.2,156.5 L 805.5,149.2 L 810.2,141.8 Z M 793.5,163.2 L 799.2,163.8 L 797.5,170.5 L 791.8,168.8 Z",
+      IN: "M 661.5,166.5 L 678.2,164.8 L 694.5,174.2 L 711.8,181.5 L 704.2,196.8 L 691.5,214.5 L 682.8,236.2 L 674.5,234.8 L 666.2,211.5 L 655.8,192.4 L 651.2,181.5 L 658.5,174.2 Z",
+      SA: "M 576.5,168.5 L 596.2,166.8 L 618.5,179.5 L 626.8,196.2 L 608.5,212.5 L 588.2,208.8 L 574.5,184.2 Z",
+      IR: "M 596.5,144.8 L 618.2,146.5 L 636.5,158.2 L 639.8,174.5 L 621.5,179.8 L 604.2,169.5 L 594.8,155.2 Z",
+      US: "M 142.5,114.5 L 185.2,114.8 L 228.5,116.2 L 264.8,121.5 L 284.2,114.8 L 289.5,123.5 L 276.8,141.2 L 265.5,158.8 L 268.2,171.5 L 261.5,172.8 L 254.2,161.5 L 234.8,162.8 L 218.5,175.2 L 208.2,165.8 L 182.5,159.5 L 154.2,154.8 L 138.5,136.2 Z M 68.5,56.5 L 108.2,52.8 L 122.5,68.5 L 96.8,76.2 L 72.5,79.8 L 64.2,68.5 Z",
+      CA: "M 122.5,52.5 L 168.2,46.8 L 224.5,49.5 L 278.8,64.2 L 304.5,88.5 L 292.2,112.8 L 264.8,119.5 L 228.5,114.5 L 185.2,113.2 L 142.5,112.8 L 126.8,92.5 L 118.5,69.2 Z",
+      MX: "M 156.5,156.5 L 184.2,161.2 L 208.5,168.5 L 218.8,186.2 L 236.5,189.5 L 231.2,199.8 L 212.5,198.2 L 192.8,186.5 L 172.5,172.8 Z",
+      BR: "M 294.5,248.5 L 328.2,244.8 L 358.5,256.2 L 382.8,274.5 L 376.2,306.8 L 356.5,334.2 L 336.8,354.5 L 324.2,344.8 L 318.5,321.5 L 298.2,298.8 L 282.5,278.2 L 286.8,259.5 Z",
+      AR: "M 298.5,336.5 L 318.2,336.8 L 332.5,356.2 L 324.8,386.5 L 314.2,418.8 L 308.5,439.5 L 296.8,431.2 L 292.5,394.8 L 294.2,358.5 Z",
+      EG: "M 541.5,158.5 L 566.2,158.8 L 571.5,182.5 L 543.8,182.8 L 540.2,168.5 Z",
+      ZA: "M 518.5,338.5 L 548.2,334.8 L 564.5,349.2 L 552.8,371.5 L 526.2,374.8 L 514.5,356.2 Z",
+      NG: "M 492.5,218.5 L 516.8,217.8 L 521.5,238.5 L 504.2,244.8 L 491.8,236.2 Z",
+      DZ: "M 472.5,152.5 L 502.8,150.8 L 516.5,176.2 L 496.8,198.5 L 468.2,184.5 L 464.5,164.8 Z",
+      MA: "M 448.5,154.5 L 471.2,153.8 L 467.5,174.5 L 444.8,182.2 L 442.5,168.5 Z",
+      KE: "M 568.5,244.5 L 586.2,245.8 L 591.5,264.5 L 576.8,274.2 L 566.5,261.5 Z",
+      ET: "M 566.5,216.5 L 592.8,218.2 L 604.5,234.8 L 588.2,245.5 L 565.8,239.2 Z",
+      AU: "M 754.5,316.5 L 788.2,306.8 L 824.5,309.5 L 848.8,334.2 L 844.2,366.8 L 818.5,382.5 L 786.2,374.8 L 752.5,368.2 L 744.8,341.5 Z M 818.5,389.5 L 826.8,389.5 L 824.5,397.8 L 817.2,396.5 Z",
+      NZ: "M 888.5,382.5 L 896.2,378.8 L 901.5,391.2 L 892.8,398.5 Z M 874.5,401.5 L 886.8,398.2 L 889.5,412.5 L 876.2,418.8 L 871.5,409.2 Z",
+      PG: "M 812.5,268.5 L 838.2,271.8 L 846.5,286.2 L 828.8,292.5 L 811.2,284.5 Z",
+      FJ: "M 918.5,308.5 L 928.2,306.8 L 931.5,316.2 L 921.8,319.5 Z M 932.5,312.5 L 938.2,311.8 L 939.5,318.2 L 933.8,319.5 Z"
+    };
+
+    const CONTINENT_BACKDROP_PATHS = [
+      "M 65,54 L 180,46 L 298,66 L 304,104 L 276,162 L 238,184 L 232,216 L 266,238 L 250,244 L 188,204 L 138,148 L 122,88 L 66,76 Z",
+      "M 266,238 L 328,240 L 384,274 L 364,342 L 312,440 L 292,428 L 286,342 L 256,276 Z",
+      "M 454,154 L 526,150 L 576,164 L 606,214 L 584,286 L 554,376 L 514,374 L 494,304 L 484,248 L 444,218 L 442,178 Z",
+      "M 464,50 L 546,46 L 682,44 L 888,60 L 952,78 L 896,126 L 814,166 L 764,188 L 734,236 L 680,238 L 650,186 L 604,196 L 574,162 L 546,144 L 460,148 L 474,104 Z",
+      "M 744,314 L 836,310 L 854,354 L 834,386 L 754,372 Z"
+    ];
+
+    // =========================================================================
+    // COMPLETE ENCYCLOPEDIC DATABASE OF ALL 195 SOVEREIGN COUNTRIES
+    // =========================================================================
+    const RAW_195_COUNTRIES = [
+      // --- POST-SOVIET (15 REPUBLICS) ---
+      ['RU','RUS','Россия','Москва','europe',1,61.5,105.3,'#ffffff,#0039a6,#d52b1e','h3','Двуглавый орёл со скипетром и державой'],
+      ['BY','BLR','Беларусь','Минск','europe',1,53.7,27.9,'#d22730,#009739,#ffffff','h2','Венок из золотых колосьев, клевера и льна'],
+      ['UA','UKR','Украина','Киев','europe',1,48.4,31.2,'#0057b7,#ffd700,#0057b7','h2','Золотой княжеский Тризуб на лазурном щите'],
+      ['MD','MDA','Молдова','Кишинёв','europe',1,47.4,28.4,'#0046ae,#ffd200,#cc092f','v3','Орёл с крестом в клюве и щитом с головой тура'],
+      ['EE','EST','Эстония','Таллин','europe',1,58.6,25.0,'#0072ce,#000000,#ffffff','h3','Три лазурных леопарда в золотом щите с дубовым венком'],
+      ['LV','LVA','Латвия','Рига','europe',1,56.9,24.6,'#9e3039,#ffffff,#9e3039','h3','Восходящее солнце, три звезды, лев и грифон'],
+      ['LT','LTU','Литва','Вильнюс','europe',1,55.2,23.9,'#fdb913,#006a44,#c1272d','h3','Серебряный рыцарь Погоня (Витис) на червлёном щите'],
+      ['KZ','KAZ','Казахстан','Астана','asia',1,48.0,66.9,'#00afca,#fec50c,#00afca','sun','Золотой шанырак и мифические крылатые тулпары'],
+      ['UZ','UZB','Узбекистан','Ташкент','asia',1,41.4,64.6,'#0099b5,#ffffff,#1eb53a','h3','Птица счастья Хумо над восходящим солнцем и реками'],
+      ['TM','TKM','Туркменистан','Ашхабад','asia',1,39.0,59.6,'#00843d,#d22630,#ffffff','sun','Зелёная восьмиконечная звезда и ахалтекинский конь Янардаг'],
+      ['KG','KGZ','Кыргызстан','Бишкек','asia',1,41.2,74.8,'#e8112d,#ffef00,#e8112d','sun','Белый сокол Ак-Шумкар на фоне отрогов Тянь-Шаня'],
+      ['TJ','TJK','Таджикистан','Душанбе','asia',1,38.9,71.3,'#cc0000,#ffffff,#006600','h3','Золотая корона с семью звёздами над горами Памира'],
+      ['GE','GEO','Грузия','Тбилиси','asia',1,42.3,43.4,'#ffffff,#ff0000,#ffffff','cross','Святой Георгий на белом коне и два золотых льва'],
+      ['AM','ARM','Армения','Ереван','asia',1,40.1,45.0,'#d90012,#0033a0,#f2a800','h3','Орёл, лев и щит с горой Арарат и Ноевым ковчегом'],
+      ['AZ','AZE','Азербайджан','Баку','asia',1,40.1,47.6,'#00b5e2,#ef3340,#509e2f','h3','Священный огонь в центре восьмиконечной звезды'],
+
+      // --- REST OF EUROPE (37 MORE -> TOTAL 44) ---
+      ['FR','FRA','Франция','Париж','europe',0,46.2,2.2,'#002395,#ffffff,#ed2939','v3','Ликторский пучок с топориком в дубовых и оливковых ветвях'],
+      ['DE','DEU','Германия','Берлин','europe',0,51.2,10.4,'#000000,#dd0000,#ffce00','h3','Чёрный одноглавый федеральный орёл на золотом щите'],
+      ['IT','ITA','Италия','Рим','europe',0,41.9,12.6,'#009246,#ffffff,#ce2b37','v3','Белая пятиконечная звезда на зубчатом колесе'],
+      ['ES','ESP','Испания','Мадрид','europe',0,40.5,-3.7,'#aa151b,#f1bf00,#aa151b','h3','Геркулесовы столбы с девизом Plus Ultra и корона'],
+      ['GB','GBR','Великобритания','Лондон','europe',0,55.4,-3.4,'#012169,#ffffff,#c8102e','cross','Коронованный английский лев и шотландский единорог'],
+      ['PL','POL','Польша','Варшава','europe',0,51.9,19.1,'#ffffff,#dc143c,#dc143c','h2','Белый коронованный орёл на красном геральдическом щите'],
+      ['SE','SWE','Швеция','Стокгольм','europe',0,60.1,18.6,'#006aa7,#fecc02,#006aa7','cross','Три золотые короны (Тре Крунур) на лазурном поле'],
+      ['NO','NOR','Норвегия','Осло','europe',0,60.5,8.5,'#ba0c2f,#ffffff,#00205b','cross','Золотой коронованный лев с серебряной секирой святого Олава'],
+      ['FI','FIN','Финляндия','Хельсинки','europe',0,61.9,25.7,'#ffffff,#002f6c,#ffffff','cross','Коронованный золотой лев с мечом среди девяти серебряных роз'],
+      ['DK','DNK','Дания','Копенгаген','europe',0,56.3,9.5,'#c60c30,#ffffff,#c60c30','cross','Три лазурных коронованных льва среди девяти червлёных сердец'],
+      ['IS','ISL','Исландия','Рейкьявик','europe',0,65.0,-19.0,'#02529c,#ffffff,#dc1e35','cross','Бык, горный великан, грифон и дракон — духи-хранители острова'],
+      ['IE','IRL','Ирландия','Дублин','europe',0,53.4,-8.2,'#169b62,#ffffff,#ff883e','v3','Золотая кельтская арфа с серебряными струнами на синем щите'],
+      ['PT','PRT','Португалия','Лиссабон','europe',0,39.4,-8.2,'#006600,#ff0000,#ffcc00','v3','Армиллярная сфера мореплавателей и щит с пятью щитками и замками'],
+      ['NL','NLD','Нидерланды','Амстердам','europe',0,52.1,5.3,'#ae1c28,#ffffff,#21468b','h3','Золотой лев с мечом и пучком стрел под королевской мантией'],
+      ['BE','BEL','Бельгия','Брюссель','europe',0,50.5,4.5,'#000000,#fae042,#ed2939','v3','Золотой брабантский лев на чёрном щите со скипетрами'],
+      ['LU','LUX','Люксембург','Люксембург','europe',0,49.8,6.1,'#ed2939,#ffffff,#00a1de','h3','Червлёный двухвостый лев на бело-голубом полосатом щите'],
+      ['CH','CHE','Швейцария','Берн','europe',0,46.8,8.2,'#ff0000,#ffffff,#ff0000','cross','Белый равноконечный прямой крест на червлёном щите'],
+      ['AT','AUT','Австрия','Вена','europe',0,47.5,14.6,'#ed2939,#ffffff,#ed2939','h3','Чёрный орёл с разорванными цепями, серпом и молотом в лапах'],
+      ['CZ','CZE','Чехия','Прага','europe',0,49.8,15.5,'#ffffff,#d7141a,#11457e','h2','Четверочастный щит с серебряным богемским львом и орлами Моравии и Силезии'],
+      ['SK','SVK','Словакия','Братислава','europe',0,48.7,19.7,'#ffffff,#0b4ea2,#ee1c25','h3','Серебряный двойной патриарший крест на трёх синих вершинах Татр'],
+      ['HU','HUN','Венгрия','Будапешт','europe',0,47.2,19.5,'#ce2939,#ffffff,#477050','h3','Рассечённый щит с полосами Арпадов и крестом под короной святого Иштвана'],
+      ['RO','ROU','Румыния','Бухарест','europe',0,45.9,25.0,'#002b7f,#fcd116,#ce1126','v3','Золотой орёл с крестом и щитом исторических провинций Валахии и Трансильвании'],
+      ['BG','BGR','Болгария','София','europe',0,42.7,25.5,'#ffffff,#00966e,#d62612','h3','Три золотых коронованных льва с девизом Единство даёт силу'],
+      ['GR','GRC','Греция','Афины','europe',0,39.1,21.8,'#0d5eaf,#ffffff,#0d5eaf','cross','Серебряный крест на лазурном щите в лавровом венке'],
+      ['AL','ALB','Албания','Тирана','europe',0,41.2,20.2,'#e41e20,#000000,#e41e20','sun','Чёрный двуглавый орёл под золотым шлемом Скандербега'],
+      ['MK','MKD','Северная Македония','Скопье','europe',0,41.6,21.7,'#d20000,#ffe600,#d20000','sun','Восходящее солнце над горными вершинами и озером в венке пшеницы и мака'],
+      ['RS','SRB','Сербия','Белград','europe',0,44.0,21.0,'#c6363c,#0c4076,#ffffff','h3','Белый двуглавый орёл Неманичей с сербским крестом и четырьмя огнивами'],
+      ['ME','MNE','Черногория','Подгорица','europe',0,42.7,19.4,'#c40308,#d4af37,#c40308','sun','Золотой двуглавый орёл со скипетром, державой и шествующим львом'],
+      ['BA','BIH','Босния и Герцеговина','Сараево','europe',0,43.9,17.7,'#002395,#fecb00,#ffffff','h2','Сине-золотой щит с диагональным рядом белых пятиконечных звёзд'],
+      ['HR','HRV','Хорватия','Загреб','europe',0,45.1,15.2,'#ff0000,#ffffff,#171796','h3','Красно-белый шахматный щит (шаховница) под короной из пяти исторических гербов'],
+      ['SI','SVN','Словения','Любляна','europe',0,46.2,15.0,'#ffffff,#005ce6,#ed1c24','h3','Синий щит с силуэтом трёхглавой горы Триглав и тремя золотыми звёздами Цельских'],
+      ['MT','MLT','Мальта','Валлетта','europe',0,35.9,14.4,'#ffffff,#cf142b,#ffffff','v3','Бело-красный щит с Георгиевским крестом под башенной короной'],
+      ['MC','MCO','Монако','Монако','europe',0,43.7,7.4,'#ce1126,#ffffff,#ce1126','h2','Ромбовидный красно-белый щит Гримальди в окружении монахов с мечами'],
+      ['SM','SMR','Сан-Марино','Сан-Марино','europe',0,43.9,12.5,'#ffffff,#5eb6e4,#ffffff','h2','Три зелёные вершины Монте-Титано с серебряными башнями и страусовыми перьями'],
+      ['LI','LIE','Лихтенштейн','Вадуц','europe',0,47.2,9.5,'#002b7f,#ce1126,#ffd100','h2','Княжеский четверочастный щит с орлом Силезии и охотничьим рогом под мантией'],
+      ['AD','AND','Андорра','Андорра-ла-Велья','europe',0,42.5,1.5,'#10069f,#fedd00,#d50032','v3','Четверочастный щит с епископской митрой Урхеля и полосами Фуа и Каталонии'],
+      ['VA','VAT','Ватикан','Ватикан','europe',0,41.9,12.45,'#ffe000,#ffffff,#ffe000','v3','Скрещённые золотой и серебряный ключи святого Петра под папской тиарой'],
+
+      // --- REST OF ASIA (40 MORE -> TOTAL 48) ---
+      ['TR','TUR','Турция','Анкара','asia',0,38.9,35.2,'#e30a17,#ffffff,#e30a17','sun','Белый полумесяц и пятиконечная звезда на червлёном поле'],
+      ['CY','CYP','Кипр','Никосия','asia',0,35.1,33.4,'#ffffff,#d57800,#4e5b31','sun','Медно-жёлтый голубь мира с оливковой ветвью и дата 1960'],
+      ['SY','SYR','Сирия','Дамаск','asia',0,34.8,39.0,'#ce1126,#ffffff,#000000','h3','Золотой сокол курайшитов со щитом с двумя зелёными звёздами'],
+      ['LB','LBN','Ливан','Бейрут','asia',0,33.9,35.9,'#ed1c24,#ffffff,#00a651','h3','Зелёный ливанский кедр на бело-красном диагональном щите'],
+      ['IL','ISR','Израиль','Иерусалим','asia',0,31.0,34.9,'#ffffff,#0038b8,#ffffff','h3','Золотая семисвечная храмовая менора в обрамлении оливковых ветвей'],
+      ['PS','PSE','Палестина','Рамалла','asia',0,31.9,35.2,'#000000,#ffffff,#007a3d','h3','Орёл Саладина со щитом панарабских цветов на груди'],
+      ['JO','JOR','Иордания','Амман','asia',0,30.6,36.2,'#000000,#ffffff,#007a3d','h3','Бронзовый орёл на земном шаре под королевской хашимитской мантией'],
+      ['IQ','IRQ','Ирак','Багдад','asia',0,33.2,43.7,'#ce1126,#ffffff,#000000','h3','Золотой орёл Саладина с надписью Аллаху Акбар на трёхцветном щите'],
+      ['KW','KWT','Кувейт','Эль-Кувейт','asia',0,29.3,47.5,'#007a3d,#ffffff,#ce1126','h3','Золотой сокол с распростёртыми крыльями и парусным судном бум на волнах'],
+      ['SA','SAU','Саудовская Аравия','Эр-Рияд','asia',0,23.9,45.1,'#006c35,#ffffff,#006c35','sun','Зелёная финиковая пальма над двумя скрещёнными арабскими саблями'],
+      ['BH','BHR','Бахрейн','Манама','asia',0,26.1,50.6,'#ffffff,#ce1126,#ffffff','v3','Красный щит с белой пятизубчатой главой в красно-белом намёте'],
+      ['QA','QAT','Катар','Доха','asia',0,25.4,51.2,'#ffffff,#8a1538,#ffffff','v3','Две скрещённые изогнутые сабли, парусник дау и остров с пальмами'],
+      ['AE','ARE','ОАЭ','Абу-Даби','asia',0,23.4,53.8,'#00732f,#ffffff,#000000','h3','Золотой сокол курайшитов с флагом федерации и семью звёздами эмиратов'],
+      ['OM','OMN','Оман','Маскат','asia',0,21.5,55.9,'#ffffff,#db161b,#008000','h3','Традиционный изогнутый кинжал ханджар в ножнах поверх двух скрещённых мечей'],
+      ['YE','YEM','Йемен','Сана','asia',0,15.6,48.5,'#ce1126,#ffffff,#000000','h3','Золотой орёл со свитком и щитом с кофейным деревом и Марибской плотиной'],
+      ['IR','IRN','Иран','Тегеран','asia',0,32.4,53.7,'#239f40,#ffffff,#da0000','h3','Каллиграфический символ из четырёх полумесяцев и меча в форме тюльпана'],
+      ['AF','AFG','Афганистан','Кабул','asia',0,33.9,67.7,'#000000,#d32011,#007a36','v3','Мечеть с михрабом и минбаром в обрамлении пшеничных колосьев'],
+      ['PK','PAK','Пакистан','Исламабад','asia',0,30.4,69.3,'#01411c,#ffffff,#01411c','sun','Четверочастный щит с хлопком, пшеницей, чаем и джутом под полумесяцем и звездой'],
+      ['IN','IND','Индия','Нью-Дели','asia',0,20.6,79.0,'#ff9933,#ffffff,#138808','h3','Львиная капитель императора Ашоки в Сарнатхе с колесом Дхармы'],
+      ['NP','NPL','Непал','Катманду','asia',0,28.4,84.1,'#dc143c,#003893,#ffffff','sun','Вершины Эвереста в венке красных рододендронов над рукопожатием'],
+      ['BT','BTN','Бутан','Тхимпху','asia',0,27.5,90.4,'#ffcc33,#ff4e12,#ffffff','h2','Два громовых дракона Друк вокруг колеса драгоценностей и лотоса'],
+      ['BD','BGD','Бангладеш','Дакка','asia',0,23.7,90.4,'#006a4e,#f42a41,#006a4e','sun','Золотой цветок кувшинки шапла над волнами рек в окружении колосьев риса'],
+      ['LK','LKA','Шри-Ланка','Шри-Джаяварденепура-Котте','asia',0,7.9,80.8,'#ffbe29,#8d153a,#00534e','sun','Золотой сингальский лев с мечом в круге лепестков голубого лотоса и колеса Дхармы'],
+      ['MV','MDV','Мальдивы','Мале','asia',0,3.2,73.2,'#d21034,#007e3a,#ffffff','sun','Кокосовая пальма с полумесяцем и звездой между двумя национальными флагами'],
+      ['MM','MMR','Мьянма','Нейпьидо','asia',0,21.9,95.9,'#fecb00,#34b233,#ea2839','h3','Два мифических льва чинте по сторонам карты страны в венке евгении'],
+      ['TH','THA','Таиланд','Бангкок','asia',0,15.9,100.9,'#a51931,#f4f5f8,#2d2a4a','h3','Мифическая крылатая солнечная птица Пхра Кхрут Пха (Гаруда)'],
+      ['LA','LAO','Лаос','Вьентьян','asia',0,19.9,102.5,'#ce1126,#002868,#ce1126','h3','Великая ступа Пха Тхат Луанг, плотина и асфальтовая дорога в колосьях риса'],
+      ['KH','KHM','Камбоджа','Пномпень','asia',0,12.6,105.0,'#032ea1,#e00025,#032ea1','h3','Пятибашенный силуэт храма Ангкор-Ват и королевские львы гаджасимха и раджасимха'],
+      ['VN','VNM','Вьетнам','Ханой','asia',0,14.1,108.3,'#da251d,#ffff00,#da251d','sun','Золотая пятиконечная звезда на красном круге с шестернёй и колосьями риса'],
+      ['MY','MYS','Малайзия','Куала-Лумпур','asia',0,4.2,101.9,'#cc0001,#ffffff,#010066','h3','Два малайских тигра, поддерживающих щит штатов федерации под полумесяцем и звездой'],
+      ['SG','SGP','Сингапур','Сингапур','asia',0,1.35,103.8,'#ef3340,#ffffff,#ef3340','h2','Красный щит с белым полумесяцем и пятью звёздами, поддерживаемый львом и тигром'],
+      ['BN','BRN','Бруней','Бандар-Сери-Бегаван','asia',0,4.5,114.7,'#f7e017,#ffffff,#000000','h3','Королевский зонт и крылья с четырьмя перьями над полумесяцем и двумя руками'],
+      ['ID','IDN','Индонезия','Джакарта','asia',0,-0.8,113.9,'#ff0000,#ffffff,#ff0000','h2','Золотая мифическая птица Гаруда Панчасила с пятичастным щитом на груди'],
+      ['TL','TLS','Восточный Тимор','Дили','asia',0,-8.9,125.7,'#dc241f,#ffc726,#000000','sun','Гора Рамелау, раскрытая книга, шестерня, колосья и традиционный лук с винтовкой'],
+      ['PH','PHL','Филиппины','Манила','asia',0,12.9,121.8,'#0038a8,#ce1126,#fcd116','h2','Восьмилучевое филиппинское солнце и три звезды на бело-сине-красном щите'],
+      ['CN','CHN','Китай','Пекин','asia',0,35.9,104.2,'#de2910,#ffde00,#de2910','sun','Врата Небесного Спокойствия (Тяньаньмэнь) под пятью золотыми звёздами'],
+      ['MN','MNG','Монголия','Улан-Батор','asia',0,46.9,103.8,'#c4272f,#015197,#c4272f','v3','Священный крылатый конь ветра Хийморь и золотой символ Соёмбо'],
+      ['KP','PRK','КНДР','Пхеньян','asia',0,40.3,127.5,'#024fa2,#ed1c27,#ffffff','h3','Гидроэлектростанция Супхун под сиянием красной звезды и горы Пэктусан'],
+      ['KR','KOR','Южная Корея','Сеул','asia',0,35.9,127.8,'#ffffff,#cd2e3a,#0047a0','sun','Красно-синий символ Инь-Ян (Тхэгык) в окружении пяти лепестков гибискуса мугунхва'],
+      ['JP','JPN','Япония','Токио','asia',0,36.2,138.3,'#ffffff,#bc002d,#ffffff','sun','Императорская золотая шестнадцатилепестковая хризантема (Кику-но Гомон)'],
+
+      // --- AMERICAS (ALL 35 SOVEREIGN STATES) ---
+      ['CA','CAN','Канада','Оттава','americas',0,56.1,-106.3,'#ff0000,#ffffff,#ff0000','v3','Королевский щит с кленовыми листьями, поддерживаемый львом и единорогом'],
+      ['US','USA','США','Вашингтон','americas',0,37.1,-95.7,'#b22234,#ffffff,#3c3b6e','h3','Белоголовый орлан с оливковой ветвью, 13 стрелами и девизом E Pluribus Unum'],
+      ['MX','MEX','Мексика','Мехико','americas',0,23.6,-102.6,'#006847,#ffffff,#ce1126','v3','Беркут на кактусе нопаль, терзающий гремучую змею на озере Тескоко'],
+      ['GT','GTM','Гватемала','Гватемала','americas',0,15.8,-90.2,'#4997d0,#ffffff,#4997d0','v3','Священная птица кетцаль на свитке независимости со скрещёнными винтовками и саблями'],
+      ['BZ','BLZ','Белиз','Бельмопан','americas',0,17.2,-88.5,'#003f87,#ce1126,#ffffff','h3','Щит под красным деревом махагони, поддерживаемый двумя лесорубами с топором и веслом'],
+      ['SV','SLV','Сальвадор','Сан-Сальвадор','americas',0,13.8,-88.9,'#0f47af,#ffffff,#0f47af','h3','Треугольник с пятью вулканами между двумя океанами и фригийским колпаком свободы'],
+      ['HN','HND','Гондурас','Тегусигальпа','americas',0,15.2,-86.2,'#00bce4,#ffffff,#00bce4','h3','Овальный щит с пирамидой, двумя башнями между океанами и рогом изобилия'],
+      ['NI','NIC','Никарагуа','Манагуа','americas',0,12.9,-85.2,'#0067c6,#ffffff,#0067c6','h3','Равносторонний треугольник с пятью вулканами, радугой и фригийским колпаком'],
+      ['CR','CRI','Коста-Рика','Сан-Хосе','americas',0,9.7,-83.8,'#002b7f,#ffffff,#ce1126','h3','Три дымящихся вулкана между Карибским морем и Тихим океаном под семью звёздами'],
+      ['PA','PAN','Панама','Панама','americas',0,8.5,-80.8,'#ffffff,#da121a,#072357','h2','Орёл гарпия над щитом с Панамским перешейком между двумя морями'],
+      ['CU','CUB','Куба','Гавана','americas',0,21.5,-77.8,'#002a8f,#ffffff,#cf142b','h3','Щит с золотым ключом от Мексиканского залива, королевской пальмой и восходящим солнцем'],
+      ['JM','JAM','Ямайка','Кингстон','americas',0,18.1,-77.3,'#009b3a,#fed100,#000000','cross','Серебряный щит с красным крестом и пятью ананасами, увенчанный крокодилом'],
+      ['HT','HTI','Гаити','Порт-о-Пренс','americas',0,19.0,-72.3,'#00209f,#d21034,#ffffff','h2','Пальма с фригийским колпаком в окружении шести знамён и старинных пушек'],
+      ['DO','DOM','Доминиканская Республика','Санто-Доминго','americas',0,18.7,-70.2,'#002d62,#ffffff,#ce1126','cross','Щит с раскрытым Евангелием, золотым крестом и шестью национальными флагами'],
+      ['BS','BHS','Багамы','Нассау','americas',0,25.0,-77.4,'#00778b,#ffc72c,#000000','h3','Каравелла Христофора Колумба под солнцем, поддерживаемая марлином и розовым фламинго'],
+      ['BB','BRB','Барбадос','Бриджтаун','americas',0,13.2,-59.5,'#00267f,#ffc726,#00267f','v3','Золотой щит с фиговым деревом и орхидеями, поддерживаемый пеликаном и корифеной'],
+      ['TT','TTO','Тринидад и Тобаго','Порт-оф-Спейн','americas',0,10.7,-61.2,'#ce1126,#ffffff,#000000','h2','Щит с тремя каравеллами и колибри, поддерживаемый алым ибисом и чачалакой'],
+      ['GD','GRD','Гренада','Сент-Джорджес','americas',0,12.1,-61.7,'#ce1126,#fcd116,#007a5e','sun','Четверочастный щит с кораблём Колумба Санта-Мария, поддерживаемый броненосцем и голубем'],
+      ['LC','LCA','Сент-Люсия','Кастри','americas',0,13.9,-61.0,'#66ccff,#fcd116,#000000','sun','Синий щит из скрещённых стеблей бамбука с розами и лилиями и попугаями амазонами'],
+      ['VC','VCT','Сент-Винсент и Гренадины','Кингстаун','americas',0,13.2,-61.2,'#0072c6,#fcd116,#009e60','v3','Две женщины в римских тогах у золотого алтаря мира под ветвью хлопчатника'],
+      ['AG','ATG','Антигуа и Барбуда','Сент-Джонс','americas',0,17.1,-61.8,'#ce1126,#0072c6,#fcd116','sun','Щит с восходящим солнцем и сахарной мельницей, поддерживаемый двумя ланями'],
+      ['DM','DMA','Доминика','Розо','americas',0,15.4,-61.4,'#006b3f,#fcd116,#d41c30','cross','Четверочастный щит с кокосовой пальмой и каноэ, поддерживаемый двумя императорскими попугаями'],
+      ['KN','KNA','Сент-Китс и Невис','Бастер','americas',0,17.3,-62.8,'#009e49,#ce1126,#000000','h2','Щит с парусником и цветами делоникса, поддерживаемый двумя бурыми пеликанами'],
+      ['CO','COL','Колумбия','Богота','americas',0,4.6,-74.3,'#fcd116,#003893,#ce1126','h3','Андский кондор с лавровым венком над щитом с гранатом, фригийским колпаком и перешейком'],
+      ['VE','VEN','Венесуэла','Каракас','americas',0,6.4,-66.6,'#ffcc00,#00247d,#cf142b','h3','Бегущий белый конь свободы на трёхчастном щите под двумя рогами изобилия'],
+      ['GY','GUY','Гайана','Джорджтаун','americas',0,4.9,-58.9,'#009e49,#fcd116,#ce1126','sun','Щит с королевской кувшинкой викторией и фазаном гоацином, поддерживаемый двумя ягуарами'],
+      ['SR','SUR','Суринам','Парамарибо','americas',0,3.9,-56.0,'#377e3f,#ffffff,#b40a2d','h3','Овальный щит с парусным кораблём и королевской пальмой, поддерживаемый двумя индейцами'],
+      ['EC','ECU','Эквадор','Кито','americas',0,-1.8,-78.2,'#ffdd00,#034ea2,#ed1c24','h3','Андский кондор над овальным щитом с заснеженным вулканом Чимборасо и пароходом Гуаяс'],
+      ['PE','PER','Перу','Лима','americas',0,-9.2,-75.0,'#d91023,#ffffff,#d91023','v3','Щит с викуньей, хинным деревом и золотым рогом изобилия в пальмово-лавровом венке'],
+      ['BO','BOL','Боливия','Сукре','americas',0,-16.3,-63.6,'#d52b1e,#f9e300,#007934','h3','Андский кондор над овалом с горой Потоси, альпакой и хлебным деревом в окружении знамён'],
+      ['BR','BRA','Бразилия','Бразилиа','americas',0,-14.2,-51.9,'#009c3b,#ffdf00,#002776','sun','Пятиконечная звезда с созвездием Южного Креста в венке ветвей кофе и табака'],
+      ['PY','PRY','Парагвай','Асунсьон','americas',0,-23.4,-58.4,'#d52b1e,#ffffff,#0038a8','h3','Золотая пятиконечная звезда Мая в венке из пальмовой и оливковой ветвей'],
+      ['UY','URY','Уругвай','Монтевидео','americas',0,-32.5,-55.8,'#ffffff,#0038a8,#fcd116','sun','Четверочастный овальный щит с весами, холмом Монтевидео, конём и быком под Майским солнцем'],
+      ['AR','ARG','Аргентина','Буэнос-Айрес','americas',0,-38.4,-63.6,'#74acdf,#ffffff,#74acdf','h3','Рукопожатие единства провинций с фригийским колпаком на пике под восходящим Майским солнцем'],
+      ['CL','CHL','Чили','Сантьяго','americas',0,-35.7,-71.5,'#0039a6,#ffffff,#d52b1e','h2','Красно-синий щит с белой звездой, поддерживаемый андским оленем уэмулом и кондором'],
+
+      // --- AFRICA (ALL 54 SOVEREIGN STATES) ---
+      ['EG','EGY','Египет','Каир','africa',0,26.8,30.8,'#ce1126,#ffffff,#000000','h3','Золотой орёл Саладина с трёхцветным щитом на груди и арабским свитком'],
+      ['LY','LBY','Ливия','Триполи','africa',0,26.3,17.2,'#e70013,#000000,#239e46','h3','Белый полумесяц и звезда в окружении оливковых ветвей'],
+      ['TN','TUN','Тунис','Тунис','africa',0,33.9,9.5,'#e70013,#ffffff,#e70013','sun','Золотой щит с пунической галерой, весами правосудия и львом с мечом'],
+      ['DZ','DZA','Алжир','Алжир','africa',0,28.0,1.7,'#006233,#ffffff,#d21034','v3','Восходящее солнце за горами Атлас, рука Фатимы и полумесяц со звездой'],
+      ['MA','MAR','Марокко','Рабат','africa',0,31.8,-7.1,'#c1272d,#006233,#c1272d','sun','Зелёная пентаграмма Соломона над горами Атлас, поддерживаемая двумя берберскими львами'],
+      ['MR','MRT','Мавритания','Нуакшот','africa',0,21.0,-10.9,'#006233,#ffd700,#d01c1f','sun','Золотой полумесяц и звезда с пальмой и стеблями проса в зелёном круге'],
+      ['ML','MLI','Мали','Бамако','africa',0,17.6,-4.0,'#14b53a,#fcd116,#ce1126','v3','Великая соборная мечеть Дженне под парящим грифом и двумя натянутыми луками'],
+      ['NE','NER','Нигер','Ниамей','africa',0,17.6,8.1,'#e05206,#ffffff,#0db02b','h3','Зелёный щит с золотым солнцем, копьём туарегов, скрещёнными мечами и головой зебу'],
+      ['TD','TCD','Чад','Нджамена','africa',0,15.5,18.7,'#002664,#fecb00,#c60c30','v3','Зубчатый сине-золотой щит с восходящим солнцем, поддерживаемый горным козлом и львом'],
+      ['SD','SDN','Судан','Хартум','africa',0,12.9,30.2,'#d21034,#ffffff,#007229','h3','Птица-секретарь с распростёртыми крыльями и древним нубийским щитом'],
+      ['SS','SSD','Южный Судан','Джуба','africa',0,6.9,31.3,'#000000,#da121a,#078930','h3','Африканский орлан-крикун со скрещёнными копьём и лопаткой под девизом Справедливость и Свобода'],
+      ['ER','ERI','Эритрея','Асмэра','africa',0,15.2,39.8,'#4189dd,#ea0437,#12ad2b','sun','Одногорбый верблюд дромадер в пустыне в обрамлении оливкового венка'],
+      ['DJ','DJI','Джибути','Джибути','africa',0,11.8,42.6,'#6ab2e7,#12ad2b,#d7141a','h2','Круглый щит и копьё с красной звездой и двумя руками с традиционными кинжалами'],
+      ['SO','SOM','Сомали','Могадишо','africa',0,5.2,46.2,'#4189dd,#ffffff,#4189dd','sun','Лазурный щит с белой пятиконечной звездой под короной, поддерживаемый двумя леопардами'],
+      ['ET','ETH','Эфиопия','Аддис-Абеба','africa',0,9.1,40.5,'#078930,#fcdd09,#da121a','h3','Сияющая золотая пятиконечная пентаграмма единства на синем круге'],
+      ['SN','SEN','Сенегал','Дакар','africa',0,14.5,-14.5,'#00853f,#fdef42,#e31b23','v3','Рассечённый щит со золотым львом и могучим деревом баобаб в венке пальмовых ветвей'],
+      ['GM','GMB','Гамбия','Банжул','africa',0,13.4,-15.3,'#ce1126,#0c1c8c,#3a7728','h3','Лазурный щит со скрещёнными топором и мотыгой мандинка, поддерживаемый двумя львами'],
+      ['GW','GNB','Гвинея-Бисау','Бисау','africa',0,11.8,-15.2,'#ce1126,#fcd116,#009e49','h2','Чёрная звезда Африки и морская раковина в обрамлении двух зелёных оливковых ветвей'],
+      ['GN','GIN','Гвинея','Конакри','africa',0,9.9,-9.7,'#ce1126,#fcd116,#009460','v3','Белый голубь мира с оливковой ветвью над красно-жёлто-зелёным щитом'],
+      ['SL','SLE','Сьерра-Леоне','Фритаун','africa',0,8.5,-11.8,'#1eb53a,#ffffff,#0072c6','h3','Щит с золотым львом, горами и факелами, поддерживаемый двумя львами под пальмами'],
+      ['LR','LBR','Либерия','Монровия','africa',0,6.4,-9.4,'#bf0a30,#ffffff,#002868','h3','Парусный корабль переселенцев у берега с пальмой, плугом, лопатой и белым голубем'],
+      ['CI','CIV','Кот-д’Ивуар','Ямусукро','africa',0,7.5,-5.5,'#f77f00,#ffffff,#009e60','v3','Зелёный щит с серебряной головой саванного слона под восходящим солнцем и пальмами'],
+      ['BF','BFA','Буркина-Фасо','Уагадугу','africa',0,12.2,-1.6,'#ef2b2d,#009e49,#fcd116','h2','Щит национальных цветов со скрещёнными копьями, поддерживаемый двумя белыми жеребцами'],
+      ['GH','GHA','Гана','Аккра','africa',0,7.9,-1.0,'#ce1126,#fcd116,#006b3f','h3','Синий щит с крестом святого Георгия, замком Осу и деревом какао, поддерживаемый двумя орлами'],
+      ['TG','TGO','Того','Ломе','africa',0,8.6,0.8,'#006a4e,#ffce00,#d21034','h3','Два красных льва с луками и стрелами, поддерживающие овальный щит с буквами RT'],
+      ['BJ','BEN','Бенин','Порто-Ново','africa',0,9.3,2.3,'#008751,#fcd116,#e8112d','h2','Четверочастный щит с замком сомба, пальмой и кораблём, поддерживаемый двумя леопардами'],
+      ['NG','NGA','Нигерия','Абуджа','africa',0,9.1,8.7,'#008751,#ffffff,#008751','v3','Чёрный щит с серебряным волнистым слиянием рек Нигер и Бенуэ, двумя конями и красным орлом'],
+      ['CV','CPV','Кабо-Верде','Прая','africa',0,16.0,-24.0,'#003893,#ffffff,#cf2027','h3','Синий треугольник с факелом свободы в круге из десяти золотых звёзд островов архипелага'],
+      ['ST','STP','Сан-Томе и Принсипи','Сан-Томе','africa',0,0.2,6.6,'#12ad2b,#ffce00,#d21034','h3','Золотой щит с какао-деревом, поддерживаемый соколом и серым попугаем жако'],
+      ['CM','CMR','Камерун','Яунде','africa',0,7.4,12.4,'#007a5e,#ce1126,#fcd116','v3','Трёхцветный щит с картой страны, весами правосудия и двумя скрещёнными боевыми топорами'],
+      ['CF','CAF','ЦАР','Банги','africa',0,6.6,20.9,'#003082,#ffffff,#289728','h3','Пятичастный щит со слоном, баобабом, алмазами и рукой, указывающей на контур Африки'],
+      ['GQ','GNQ','Экваториальная Гвинея','Малабо','africa',0,1.7,10.3,'#3e9a00,#ffffff,#e32118','h3','Серебряный щит с хлопковым деревом сейба под дугой из шести золотых шестиконечных звёзд'],
+      ['GA','GAB','Габон','Либревиль','africa',0,-0.8,11.6,'#009e60,#fcd116,#3a75c4','h3','Золотой щит с чёрным парусником и тремя кругами под деревом окуме и двумя чёрными пантерами'],
+      ['CG','COG','Республика Конго','Браззавиль','africa',0,-0.2,15.8,'#009543,#fbde4a,#dc241f','h2','Золотой щит с красным львом с факелом под лесной короной, поддерживаемый двумя чёрными слонами'],
+      ['CD','COD','ДР Конго','Киншаса','africa',0,-4.0,21.8,'#007fff,#f7d618,#ce1021','h2','Голова леопарда в окружении слонового бивня и копья на каменном постаменте'],
+      ['AO','AGO','Ангола','Луанда','africa',0,-11.2,17.9,'#cc092f,#000000,#ffec00','h2','Скрещённые мачете и мотыга под золотой звездой в круге из шестерни, кукурузы и кофе'],
+      ['UG','UGA','Уганда','Кампала','africa',0,1.4,32.3,'#000000,#fcdc04,#d90000','h3','Овальный щит нилотских племён с волнами озера Виктория, поддерживаемый антилопой коб и венценосным журавлём'],
+      ['RW','RWA','Руанда','Кигали','africa',0,-1.9,29.9,'#00a1de,#fad201,#20603d','h3','Традиционная плетёная корзина агасеке, шестерня, солнце и два боевых щита в зелёном кольце'],
+      ['BI','BDI','Бурунди','Гитега','africa',0,-3.4,29.9,'#ce1126,#1eb53a,#ffffff','cross','Красный щит с золотой головой льва и тремя традиционными копьями под девизом Единство, Труд, Прогресс'],
+      ['KE','KEN','Кения','Найроби','africa',0,-0.02,37.9,'#000000,#bb0000,#006600','h3','Традиционный масайский щит с петухом, держащим топор, поддерживаемый двумя львами с копьями'],
+      ['TZ','TZA','Танзания','Додома','africa',0,-6.4,34.9,'#1eb53a,#fcd116,#00a3dd','h2','Воинский щит с факелом свободы Ухуру на вершине Килиманджаро и слоновыми бивнями'],
+      ['ZM','ZMB','Замбия','Лусака','africa',0,-13.1,27.8,'#198a00,#de2010,#000000','sun','Волнистый чёрно-белый щит водопада Виктория под парящим орланом, поддерживаемый мужчиной и женщиной'],
+      ['MW','MWI','Малави','Лилонгве','africa',0,-13.3,34.3,'#000000,#ce1126,#339e35','h3','Щит с волнами озера Ньяса, золотым львом и солнцем, поддерживаемый львом и леопардом'],
+      ['MZ','MOZ','Мозамбик','Мапуту','africa',0,-18.7,35.5,'#007168,#fce100,#d21034','h3','Раскрытая книга, скрещённые автомат АК-47 и мотыга над океаном в зубчатом колесе и венке кукурузы'],
+      ['ZW','ZWE','Зимбабве','Хараре','africa',0,-19.0,29.2,'#319208,#ffd200,#de2010','h3','Зелёный щит с каменной башней Большого Зимбабве и золотой птицей Зимбабве, поддерживаемый двумя антилопами куду'],
+      ['BW','BWA','Ботсвана','Габороне','africa',0,-22.3,24.7,'#6da9d2,#000000,#ffffff','h3','Овальный щит с шестернёй, волнами и головой быка, поддерживаемый двумя бурчелловыми зебрами'],
+      ['NA','NAM','Намибия','Виндхук','africa',0,-22.9,18.5,'#003580,#d21034,#009543','h2','Щит национального флага под орланом-крикуном, поддерживаемый двумя антилопами орикс на песках пустыни'],
+      ['ZA','ZAF','ЮАР','Претория','africa',0,-30.6,22.9,'#007749,#ffb81c,#de3831','h3','Золотой щит с наскальными фигурами бушменов под птицей-секретарём, восходящим солнцем и цветком протеи'],
+      ['LS','LSO','Лесото','Масеру','africa',0,-29.6,28.2,'#00209f,#ffffff,#009543','h3','Традиционный щит басуто с крокодилом, поддерживаемый двумя скакунами басуто на вершине Таба-Босиу'],
+      ['SZ','SWZ','Эсватини','Мбабане','africa',0,-26.5,31.5,'#3e5eb9,#ffd900,#b10c0c','h3','Лазурный боевой щит нгвениама с копьями под головным убором из перьев турако, поддерживаемый львом и слоном'],
+      ['MG','MDG','Мадагаскар','Антананариву','africa',0,-18.8,46.9,'#ffffff,#fc3d32,#007e3a','h2','Золотой диск с контуром острова, головой зебу и веером листьев дерева путешественников равенала'],
+      ['KM','COM','Коморы','Морони','africa',0,-11.9,43.8,'#ffc61e,#3a75c4,#ce1126','h3','Зелёный полумесяц с четырьмя белыми звёздами островов на фоне лучей солнца в оливковом венке'],
+      ['MU','MUS','Маврикий','Порт-Луи','africa',0,-20.3,57.6,'#ea2839,#1a206d,#ffd500','h3','Четверочастный щит с кораблём, пальмами, ключом и звездой, поддерживаемый птицей додо и оленем замбаром'],
+      ['SC','SYC','Сейшелы','Виктория','africa',0,-4.7,55.5,'#003f87,#fcd856,#d62828','sun','Щит с гигантской черепахой под пальмой коко-де-мер, поддерживаемый двумя рыбами-парусниками'],
+
+      // --- OCEANIA (ALL 14 SOVEREIGN STATES) ---
+      ['AU','AUS','Австралия','Канберра','oceania',0,-25.3,133.8,'#00008b,#ffffff,#ff0000','cross','Щит шести штатов со звездой Содружества, поддерживаемый рыжим кенгуру и страусом эму'],
+      ['NZ','NZL','Новая Зеландия','Веллингтон','oceania',0,-40.9,174.9,'#00247d,#cc142b,#ffffff','cross','Щит с созвездием Южного Креста, руном, снопом и кораблями под короной'],
+      ['PG','PNG','Папуа — Новая Гвинея','Порт-Морсби','oceania',0,-6.3,143.9,'#ce1126,#000000,#fcd116','h2','Красногрудая райская птица рагги с распущенным оперением на церемониальном копье и барабане кунду'],
+      ['FJ','FJI','Фиджи','Сува','oceania',0,-17.7,178.1,'#68bfe5,#002868,#ce1126','cross','Щит с геральдическим львом, сахарным тростником и голубем под каноэ с балансиром'],
+      ['SB','SLB','Соломоновы Острова','Хониара','oceania',0,-9.6,160.2,'#0051ba,#fcd116,#215b33','h2','Золотой щит с фрегатами, орлами и черепахой, поддерживаемый гребнистым крокодилом и акулой'],
+      ['VU','VUT','Вануату','Порт-Вила','oceania',0,-15.4,166.9,'#d21034,#009543,#000000','h2','Меланезийский воин с копьём на вершине вулкана на фоне священного кабаньего клыка'],
+      ['WS','WSM','Самоа','Апиа','oceania',0,-13.8,-172.1,'#ce1126,#002b7f,#ffffff','sun','Сине-белый щит с созвездием Южного Креста и кокосовой пальмой над морскими волнами'],
+      ['TO','TON','Тонга','Нукуалофа','oceania',0,-21.2,-175.2,'#c10000,#ffffff,#c10000','cross','Королевский четверочастный щит с тремя звёздами, короной, голубем и тремя мечами'],
+      ['KI','KIR','Кирибати','Южная Тарава','oceania',0,1.9,-157.4,'#ce1126,#fcd116,#003f87','sun','Золотая птица фрегат, парящая над восходящим солнцем и сине-белыми волнами Тихого океана'],
+      ['TV','TUV','Тувалу','Фунафути','oceania',0,-7.1,177.6,'#0099cc,#fcd116,#00247d','sun','Золотой щит с традиционным общинным домом манеапа над волнами'],
+      ['NR','NRU','Науру','Ярен','oceania',0,-0.52,166.9,'#002b7f,#ffc61e,#ffffff','h3','Овальный щит с алхимическим символом фосфора, птицей фрегатом на шесте и цветами калофиллума'],
+      ['PW','PLW','Палау','Нгерулмуд','oceania',0,7.5,134.6,'#0099ff,#ffff00,#0099ff','sun','Традиционный общинный дом бай на каменном основании из 16 камней штатов'],
+      ['FM','FSM','Микронезия','Паликир','oceania',0,6.9,158.2,'#75b2dd,#ffffff,#75b2dd','sun','Круглая печать с кокосовой пальмой на островке в океане и четырьмя белыми звёздами'],
+      ['MH','MHL','Маршалловы Острова','Маджуро','oceania',0,7.1,171.2,'#003893,#dd7500,#ffffff','h2','Круглая печать с ангелом мира с распростёртыми крыльями, каноэ с балансиром и пальмой']
+    ];
+
+    const COUNTRIES_DB = RAW_195_COUNTRIES.map(row => {
+      const [id, iso3, name, capital, continent, isPostSov, lat, lon, colStr, flagLayout, emblemTitle] = row;
+      return {
+        id,
+        iso3,
+        name,
+        capital,
+        region: isPostSov ? 'postsov' : 'world',
+        isPostSoviet: Boolean(isPostSov),
+        continent,
+        lat,
+        lon,
+        colors: colStr.split(','),
+        flagLayout,
+        emblemTitle
+      };
+    });
+
+    function generateCoordinateTerritoryPath(country) {
+      const cx = ((country.lon + 180) / 360) * 1000;
+      const cy = ((90 - country.lat) / 180) * 500;
+      const s1 = country.id.charCodeAt(0);
+      const s2 = country.id.charCodeAt(1);
+      const baseR = 1.9;
+      const pts = [];
+      const steps = 10;
+      for (let i = 0; i < steps; i++) {
+        const angle = (i / steps) * Math.PI * 2;
+        const variance = 0.75 + 0.4 * Math.sin(angle * 3 + s1) * Math.cos(angle * 2 + s2);
+        const rx = cx + Math.cos(angle) * baseR * variance * 1.15;
+        const ry = cy + Math.sin(angle) * baseR * variance;
+        pts.push(`${i === 0 ? 'M' : 'L'} ${rx.toFixed(1)},${ry.toFixed(1)}`);
+      }
+      return pts.join(' ') + ' Z';
+    }
+
+    function shuffleArray(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function calculatePathBounds(pathD, padFactor = 0.16) {
+      if (!pathD) return { viewBox: "0 0 100 100", strokeW: 0.6 };
+      const nums = pathD.match(/-?\d+(\.\d+)?/g);
+      if (!nums || nums.length < 4) return { viewBox: "0 0 100 100", strokeW: 0.6 };
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (let i = 0; i < nums.length; i += 2) {
+        const x = parseFloat(nums[i]);
+        const y = parseFloat(nums[i + 1]);
+        if (!isNaN(x) && !isNaN(y)) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+      const w = Math.max(maxX - minX, 3);
+      const h = Math.max(maxY - minY, 3);
+      const span = Math.max(w, h);
+      const pad = span * padFactor;
+      const cx = (minX + maxX) / 2;
+      const cy = (minY + maxY) / 2;
+      const half = span / 2 + pad;
+      const side = half * 2;
+      return {
+        viewBox: `${(cx - half).toFixed(2)} ${(cy - half).toFixed(2)} ${side.toFixed(2)} ${side.toFixed(2)}`,
+        strokeW: Math.max(side * 0.011, 0.12).toFixed(2)
+      };
+    }
+
+    function geoJsonGeometryToSvgPath(geometry) {
+      if (!geometry) return '';
+      const lonToX = (lon) => ((lon + 180) / 360) * 1000;
+      const latToY = (lat) => ((90 - lat) / 180) * 500;
+      const ringToPath = (ring) => {
+        if (!ring || ring.length < 3) return '';
+        let d = '';
+        for (let i = 0; i < ring.length; i++) {
+          const x = lonToX(ring[i][0]).toFixed(1);
+          const y = latToY(ring[i][1]).toFixed(1);
+          d += (i === 0 ? `M ${x},${y}` : ` L ${x},${y}`);
+        }
+        return d + ' Z ';
+      };
+      if (geometry.type === 'Polygon') {
+        return geometry.coordinates.map(ringToPath).join('');
+      } else if (geometry.type === 'MultiPolygon') {
+        return geometry.coordinates.map(poly => poly.map(ringToPath).join('')).join('');
+      }
+      return '';
+    }
+
+    // -------------------------------------------------------------------------
+    // MAIN APPLICATION CONTROLLER
+    // -------------------------------------------------------------------------
+    const app = {
+      screen: 'menu', // 'menu' | 'play' | 'lobby' | 'summary'
+      region: 'world',
+      questionType: 'flag',
+      answerType: 'choice',
+      matchMode: 'solo', // 'solo' | 'blitz' | 'local_1v1' | 'online_1v1'
+
+      // Match Runtime State (Variant A: Tactical Combo + Speed Bonus)
+      round: 1,
+      totalRounds: 10, // Configurable: 10 | 20 | 50 | 100
+      score: 0,
+      streak: 0,
+      correctCount: 0,
+      questionStartTime: 0,
+
+      // Local 1v1 Turn-Based State
+      p1Score: 0,
+      p2Score: 0,
+      p1Streak: 0,
+      p2Streak: 0,
+      p1Correct: 0,
+      p2Correct: 0,
+      activeTurn: 1, // 1 or 2 for local_1v1
+      localHandoverScreen: false,
+
+      // Blitz 60-Second Timer State
+      blitzTimeLeft: 60,
+      blitzTimerId: null,
+
+      // Online 1v1 Sync State
+      roomCode: '4815',
+      peer: null,
+      conn: null,
+      isOnlineHost: false,
+      peerStatus: 'READY',
+      opponentFinished: false,
+      opponentFinalScore: 0,
+      opponentCorrectCount: 0,
+
+      // Pre-generated round packet deck: [{ targetId, choiceIds: [...] }, ...]
+      roundPackets: [],
+      target: null,
+      choices: [],
+      feedback: null,
+
+      // Google-Maps-Style Interactive Pan & Pinch-to-Zoom State
+      mapZoom: 1,
+      mapCenter: { x: 500, y: 235 },
+      isDraggingMap: false,
+      dragMoved: false,
+      pointerCache: [],
+      prevPinchDist: null,
+      lastDragPos: { x: 0, y: 0 },
+      highResPaths: {},
+
+      init() {
+        this.render();
+        this.loadHighResWorldGeoJson();
+        window.addEventListener('keydown', (e) => this.handleKeyDown(e));
+      },
+
+      // Calculate Variant A Points: +100 Base + up to +50 Speed Bonus + Combo Streak Bonus (+20 * prevStreak)
+      computeVariantAPoints(isCorrect, prevStreak, elapsedSeconds) {
+        if (!isCorrect) {
+          return { totalGain: 0, basePts: 0, speedBonus: 0, streakBonus: 0, newStreak: 0 };
+        }
+        const basePts = 100;
+        const clampedSec = Math.max(0.3, Math.min(elapsedSeconds, 12));
+        const speedBonus = Math.max(5, Math.round(50 * (1 - (clampedSec - 0.3) / 11.7)));
+        const newStreak = prevStreak + 1;
+        const streakBonus = prevStreak * 20;
+        const totalGain = basePts + speedBonus + streakBonus;
+        return { totalGain, basePts, speedBonus, streakBonus, newStreak };
+      },
+
+      stopBlitzTimer() {
+        if (this.blitzTimerId) {
+          clearInterval(this.blitzTimerId);
+          this.blitzTimerId = null;
+        }
+      },
+
+      startBlitzTimer() {
+        this.stopBlitzTimer();
+        this.blitzTimeLeft = 60;
+        this.blitzTimerId = setInterval(() => {
+          if (this.screen !== 'play' || this.matchMode !== 'blitz') {
+            this.stopBlitzTimer();
+            return;
+          }
+          this.blitzTimeLeft -= 1;
+          const badge = document.getElementById('blitz-timer-display');
+          if (badge) badge.innerText = `${this.blitzTimeLeft} СЕК`;
+          if (this.blitzTimeLeft <= 0) {
+            this.stopBlitzTimer();
+            this.screen = 'summary';
+            sfx.play('correct');
+            this.render();
+          }
+        }, 1000);
+      },
+
+      async loadHighResWorldGeoJson() {
+        const urls = [
+          'https://cdn.jsdelivr.net/gh/holtzy/D3-graph-gallery@master/DATA/world.geojson',
+          'https://raw.githubusercontent.com/holtzy/D3-graph-gallery/master/DATA/world.geojson'
+        ];
+        for (const url of urls) {
+          try {
+            const res = await fetch(url);
+            if (!res.ok) continue;
+            const data = await res.json();
+            if (!data || !data.features) continue;
+            const loaded = {};
+            data.features.forEach(feat => {
+              const iso3 = feat.id || (feat.properties && (feat.properties.ISO_A3 || feat.properties.adm0_a3));
+              const match = COUNTRIES_DB.find(c => c.iso3 === iso3);
+              if (match && feat.geometry) {
+                const svgD = geoJsonGeometryToSvgPath(feat.geometry);
+                if (svgD) loaded[match.id] = svgD;
+              }
+            });
+            if (Object.keys(loaded).length > 30) {
+              this.highResPaths = loaded;
+              const badge = document.getElementById('geo-db-badge');
+              if (badge) badge.innerText = `[ БАЗА: 195 СТРАН // HD КАРТА ]`;
+              if (this.screen === 'play') this.render();
+              break;
+            }
+          } catch (e) {}
+        }
+      },
+
+      getCountrySvgPath(id) {
+        if (this.highResPaths[id]) return this.highResPaths[id];
+        if (BUILTIN_GEO_PATHS[id]) return BUILTIN_GEO_PATHS[id];
+        const country = COUNTRIES_DB.find(c => c.id === id);
+        return country ? generateCoordinateTerritoryPath(country) : BUILTIN_GEO_PATHS.RU;
+      },
+
+      getFilteredPool(reg = this.region) {
+        if (reg === 'postsov') return COUNTRIES_DB.filter(c => c.isPostSoviet);
+        if (reg === 'europe') return COUNTRIES_DB.filter(c => c.continent === 'europe');
+        if (reg === 'asia') return COUNTRIES_DB.filter(c => c.continent === 'asia');
+        if (reg === 'americas') return COUNTRIES_DB.filter(c => c.continent === 'americas');
+        if (reg === 'africa') return COUNTRIES_DB.filter(c => c.continent === 'africa');
+        if (reg === 'oceania') return COUNTRIES_DB.filter(c => c.continent === 'oceania');
+        return COUNTRIES_DB;
+      },
+
+      getDefaultRegionCamera(reg = this.region) {
+        if (reg === 'europe') return { zoom: 3.6, x: 522, y: 98 };
+        if (reg === 'postsov') return { zoom: 2.3, x: 675, y: 105 };
+        if (reg === 'asia') return { zoom: 2.3, x: 715, y: 155 };
+        if (reg === 'americas') return { zoom: 1.45, x: 245, y: 235 };
+        if (reg === 'africa') return { zoom: 2.1, x: 525, y: 265 };
+        if (reg === 'oceania') return { zoom: 2.6, x: 845, y: 340 };
+        return { zoom: 1, x: 500, y: 235 };
+      },
+
+      resetMapCamera() {
+        const cam = this.getDefaultRegionCamera(this.region);
+        this.mapZoom = cam.zoom;
+        this.mapCenter = { x: cam.x, y: cam.y };
+      },
+
+      toggleSound() {
+        sfx.enabled = !sfx.enabled;
+        sfx.play('click');
+        const lbl = document.getElementById('sound-label');
+        if (lbl) lbl.innerText = sfx.enabled ? 'SFX: ON' : 'SFX: OFF';
+      },
+
+      setOption(key, val) {
+        sfx.play('click');
+        this[key] = val;
+        if (this.questionType === 'map_highlight' && this.answerType === 'map_click') {
+          this.answerType = 'choice';
+        }
+        this.render();
+      },
+
+      showMenu() {
+        sfx.play('click');
+        this.stopBlitzTimer();
+        if (this.peer) {
+          try { this.peer.destroy(); } catch (e) {}
+          this.peer = null;
+          this.conn = null;
+        }
+        this.screen = 'menu';
+        document.getElementById('back-menu-btn').classList.add('hidden');
+        this.render();
+      },
+
+      generateMatchPackets(reg = this.region, count = this.totalRounds) {
+        const basePool = this.getFilteredPool(reg);
+        let pool = shuffleArray(basePool);
+        while (pool.length < count) {
+          pool = pool.concat(shuffleArray(basePool));
+        }
+        const packets = [];
+        for (let i = 0; i < count; i++) {
+          const target = pool[i];
+          const distractors = shuffleArray(COUNTRIES_DB.filter(c => c.id !== target.id)).slice(0, 3);
+          const choices = shuffleArray([target, ...distractors]);
+          packets.push({
+            targetId: target.id,
+            choiceIds: choices.map(c => c.id)
+          });
+        }
+        return packets;
+      },
+
+      // -----------------------------------------------------------------------
+      // ONLINE 1V1 LOBBY & HOST-AUTHORITATIVE ROOM SYNC
+      // -----------------------------------------------------------------------
+      openLobby() {
+        sfx.play('click');
+        this.stopBlitzTimer();
+        this.roomCode = String(Math.floor(1000 + Math.random() * 9000));
+        this.peerStatus = 'СОЗДАНИЕ ЗАЩИЩЕННОГО КАНАЛА КОМНАТЫ...';
+        this.screen = 'lobby';
+        document.getElementById('back-menu-btn').classList.remove('hidden');
+        this.initPeerHost();
+        this.render();
+      },
+
+      initPeerHost() {
+        if (typeof Peer === 'undefined') {
+          this.peerStatus = 'ОШИБКА СЕТИ PEERJS // ПРОВЕРЬТЕ ИНТЕРНЕТ';
+          return;
+        }
+        try {
+          if (this.peer) this.peer.destroy();
+          this.isOnlineHost = true;
+          this.peer = new Peer(`geoduel-room-${this.roomCode}`);
+          this.peer.on('open', () => {
+            this.peerStatus = `КОМНАТА #${this.roomCode} ГОТОВА (${this.totalRounds} РАУНДОВ) // ОЖИДАНИЕ ИГРОКА 2...`;
+            if (this.screen === 'lobby') this.render();
+          });
+          this.peer.on('connection', (conn) => {
+            this.conn = conn;
+            this.setupConnListeners();
+            this.conn.on('open', () => {
+              const packets = this.generateMatchPackets(this.region, this.totalRounds);
+              this.conn.send({
+                type: 'INIT_MATCH',
+                settings: {
+                  region: this.region,
+                  questionType: this.questionType,
+                  answerType: this.answerType,
+                  totalRounds: this.totalRounds
+                },
+                packets
+              });
+              this.peerStatus = 'ИГРОК 2 ПОДКЛЮЧИЛСЯ! СИНХРОНИЗАЦИЯ...';
+              if (this.screen === 'lobby') this.render();
+              this.startOnlineMatchWithPackets(packets);
+            });
+          });
+        } catch (e) {}
+      },
+
+      joinPeerRoom(codeInput) {
+        const cleanCode = (codeInput || '').replace(/\D/g, '').trim();
+        if (cleanCode.length !== 4) {
+          this.peerStatus = 'ВВЕДИТЕ 4-ЗНАЧНЫЙ КОД КОМНАТЫ ДРУГА!';
+          this.render();
+          return;
+        }
+        sfx.play('click');
+        this.peerStatus = `ПОДКЛЮЧЕНИЕ К КОМНАТЕ #${cleanCode}...`;
+        this.render();
+
+        if (typeof Peer === 'undefined') return;
+        try {
+          if (this.peer) this.peer.destroy();
+          this.isOnlineHost = false;
+          this.peer = new Peer();
+          this.peer.on('open', () => {
+            const conn = this.peer.connect(`geoduel-room-${cleanCode}`, { reliable: true });
+            this.conn = conn;
+            this.setupConnListeners();
+            conn.on('error', () => {
+              this.peerStatus = `НЕ УДАЛОСЬ НАЙТИ КОМНАТУ #${cleanCode}`;
+              if (this.screen === 'lobby') this.render();
+            });
+          });
+        } catch (e) {}
+      },
+
+      setupConnListeners() {
+        if (!this.conn) return;
+        this.conn.on('data', (msg) => {
+          if (!msg || !msg.type) return;
+
+          if (msg.type === 'INIT_MATCH') {
+            this.region = msg.settings.region;
+            this.questionType = msg.settings.questionType;
+            this.answerType = msg.settings.answerType;
+            this.totalRounds = msg.settings.totalRounds || 10;
+            this.startOnlineMatchWithPackets(msg.packets);
+          }
+
+          if (msg.type === 'MATCH_FINISHED') {
+            this.opponentFinished = true;
+            this.opponentFinalScore = msg.finalScore;
+            this.opponentCorrectCount = msg.correctCount || 0;
+            if (this.screen === 'summary') {
+              sfx.play('correct');
+              this.render();
+            }
+          }
+        });
+      },
+
+      startOnlineMatchWithPackets(packets) {
+        this.stopBlitzTimer();
+        this.matchMode = 'online_1v1';
+        this.round = 1;
+        this.score = 0;
+        this.streak = 0;
+        this.correctCount = 0;
+        this.opponentFinished = false;
+        this.opponentFinalScore = 0;
+        this.opponentCorrectCount = 0;
+        this.roundPackets = packets;
+        this.screen = 'play';
+        document.getElementById('back-menu-btn').classList.remove('hidden');
+        this.loadRoundFromPacket(1);
+      },
+
+      // -----------------------------------------------------------------------
+      // START SOLO, BLITZ OR LOCAL 1V1 MATCH
+      // -----------------------------------------------------------------------
+      startMatch(forcedMode = null) {
+        sfx.play('click');
+        if (forcedMode) this.matchMode = forcedMode;
+        this.round = 1;
+        this.score = 0;
+        this.streak = 0;
+        this.correctCount = 0;
+        this.p1Score = 0;
+        this.p2Score = 0;
+        this.p1Streak = 0;
+        this.p2Streak = 0;
+        this.p1Correct = 0;
+        this.p2Correct = 0;
+        this.activeTurn = 1;
+        this.localHandoverScreen = false;
+        this.opponentFinished = false;
+        this.opponentFinalScore = 0;
+
+        const packetCount = this.matchMode === 'blitz' ? 250 : this.totalRounds;
+        this.roundPackets = this.generateMatchPackets(this.region, packetCount);
+        this.screen = 'play';
+        document.getElementById('back-menu-btn').classList.remove('hidden');
+
+        if (this.matchMode === 'blitz') {
+          this.startBlitzTimer();
+        } else {
+          this.stopBlitzTimer();
+        }
+
+        this.loadRoundFromPacket(1);
+      },
+
+      loadRoundFromPacket(roundNum) {
+        this.feedback = null;
+        this.resetMapCamera();
+        const pkt = this.roundPackets[(roundNum - 1) % this.roundPackets.length];
+        this.target = COUNTRIES_DB.find(c => c.id === pkt.targetId) || COUNTRIES_DB[0];
+        this.choices = pkt.choiceIds.map(id => COUNTRIES_DB.find(c => c.id === id)).filter(Boolean);
+        this.questionStartTime = performance.now();
+        this.render();
+      },
+
+      // -----------------------------------------------------------------------
+      // SUBMIT ANSWER (VARIANT A: COMBO + SPEED BONUS, NO NEGATIVE POINTS)
+      // -----------------------------------------------------------------------
+      submitAnswer(chosenId) {
+        if (this.feedback || !this.target || this.localHandoverScreen) return;
+        const isCorrect = chosenId === this.target.id;
+        const elapsedSec = Math.max(0.2, (performance.now() - (this.questionStartTime || performance.now())) / 1000);
+
+        // 1) LOCAL 1v1 ON ONE PHONE (TURN-BASED PASS-THE-PHONE, HIDDEN SCORES)
+        if (this.matchMode === 'local_1v1') {
+          sfx.play('click');
+          if (this.activeTurn === 1) {
+            const calc1 = this.computeVariantAPoints(isCorrect, this.p1Streak, elapsedSec);
+            this.p1Score += calc1.totalGain;
+            this.p1Streak = calc1.newStreak;
+            if (isCorrect) this.p1Correct += 1;
+            this.localHandoverScreen = true;
+            this.render();
+          } else {
+            const calc2 = this.computeVariantAPoints(isCorrect, this.p2Streak, elapsedSec);
+            this.p2Score += calc2.totalGain;
+            this.p2Streak = calc2.newStreak;
+            if (isCorrect) this.p2Correct += 1;
+            this.feedback = {
+              status: 'recorded',
+              clickedId: chosenId
+            };
+            this.render();
+            setTimeout(() => {
+              if (this.screen !== 'play') return;
+              if (this.round >= this.totalRounds) {
+                this.screen = 'summary';
+                sfx.play('correct');
+                this.render();
+              } else {
+                this.round += 1;
+                this.activeTurn = 1;
+                this.localHandoverScreen = false;
+                this.loadRoundFromPacket(this.round);
+              }
+            }, 650);
+          }
+          return;
+        }
+
+        // 2) SOLO, BLITZ OR ONLINE 1v1 (VARIANT A: +100 BASE + SPEED BONUS + STREAK BONUS)
+        const calc = this.computeVariantAPoints(isCorrect, this.streak, elapsedSec);
+        if (isCorrect) {
+          sfx.play('correct');
+          this.score += calc.totalGain;
+          this.streak = calc.newStreak;
+          this.correctCount += 1;
+        } else {
+          sfx.play('wrong');
+          this.streak = 0;
+        }
+
+        this.feedback = {
+          status: isCorrect ? 'correct' : 'wrong',
+          clickedId: chosenId,
+          totalGain: calc.totalGain,
+          speedBonus: calc.speedBonus,
+          streakBonus: calc.streakBonus,
+          elapsedSec: elapsedSec.toFixed(1)
+        };
+        this.render();
+
+        const nextDelay = this.matchMode === 'blitz' ? 500 : 1250;
+
+        setTimeout(() => {
+          if (this.screen !== 'play') return;
+
+          if (this.matchMode === 'blitz') {
+            if (this.blitzTimeLeft <= 0) {
+              this.stopBlitzTimer();
+              this.screen = 'summary';
+              this.render();
+            } else {
+              this.round += 1;
+              this.loadRoundFromPacket(this.round);
+            }
+            return;
+          }
+
+          if (this.round >= this.totalRounds) {
+            this.screen = 'summary';
+            if (this.matchMode === 'online_1v1' && this.conn && this.conn.open) {
+              this.conn.send({
+                type: 'MATCH_FINISHED',
+                finalScore: this.score,
+                correctCount: this.correctCount
+              });
+            }
+            this.render();
+          } else {
+            this.round += 1;
+            this.loadRoundFromPacket(this.round);
+          }
+        }, nextDelay);
+      },
+
+      confirmHandoverToPlayer2() {
+        sfx.play('click');
+        this.localHandoverScreen = false;
+        this.activeTurn = 2;
+        this.feedback = null;
+        this.resetMapCamera();
+        this.questionStartTime = performance.now();
+        this.render();
+      },
+
+      handleTextForm(e) {
+        e.preventDefault();
+        if (this.feedback || !this.target) return;
+        const inputEl = document.getElementById('manual-country-input');
+        if (!inputEl || !inputEl.value.trim()) return;
+        const val = inputEl.value.trim().toLowerCase().replace(/ё/g, 'е');
+        const targetName = this.target.name.toLowerCase().replace(/ё/g, 'е');
+
+        const exact = val === targetName;
+        const forgiving = targetName.length >= 6 && targetName.startsWith(val.slice(0, -1)) && Math.abs(targetName.length - val.length) <= 1;
+
+        if (exact || forgiving) {
+          this.submitAnswer(this.target.id);
+        } else {
+          const found = COUNTRIES_DB.find(c => c.name.toLowerCase().replace(/ё/g, 'е') === val);
+          this.submitAnswer(found ? found.id : 'INVALID');
+        }
+      },
+
+      updateAutocomplete(val) {
+        const box = document.getElementById('autocomplete-box');
+        if (!box) return;
+        const q = val.trim().toLowerCase();
+        if (!q) {
+          box.innerHTML = '';
+          return;
+        }
+        const matches = COUNTRIES_DB.filter(c => c.name.toLowerCase().includes(q)).slice(0, 5);
+        box.innerHTML = matches.map(m => `
+          <button type="button" onclick="app.submitAnswer('${m.id}')"
+            class="tactical-btn px-3 py-1.5 text-xs font-semibold flex items-center gap-2">
+            <span>${m.name}</span>
+            <span class="font-mono-tech text-[10px] opacity-50">[${m.capital}]</span>
+          </button>
+        `).join('');
+      },
+
+      handleKeyDown(e) {
+        if (this.screen !== 'play' || this.feedback || this.localHandoverScreen || this.answerType !== 'choice') return;
+        const soloKeys = ['1', '2', '3', '4'];
+        const idx = soloKeys.indexOf(e.key);
+        if (idx !== -1 && this.choices[idx]) {
+          this.submitAnswer(this.choices[idx].id);
+        }
+      },
+
+      // -----------------------------------------------------------------------
+      // GOOGLE-MAPS-STYLE TOUCH PAN, PINCH-TO-ZOOM & WHEEL ZOOM ENGINE
+      // -----------------------------------------------------------------------
+      getMapViewBoxString() {
+        const w = 915 / this.mapZoom;
+        const h = 420 / this.mapZoom;
+        const minX = this.mapCenter.x - w / 2;
+        const minY = this.mapCenter.y - h / 2;
+        return `${minX.toFixed(2)} ${minY.toFixed(2)} ${w.toFixed(2)} ${h.toFixed(2)}`;
+      },
+
+      applyMapViewBoxLive() {
+        const svgEl = document.getElementById('interactive-world-svg');
+        if (!svgEl) return;
+        svgEl.setAttribute('viewBox', this.getMapViewBoxString());
+        if (this.mapZoom >= 4.5) {
+          svgEl.classList.add('map-zoomed-in');
+        } else {
+          svgEl.classList.remove('map-zoomed-in');
+        }
+        const zoomBadge = document.getElementById('map-zoom-indicator');
+        if (zoomBadge) zoomBadge.innerText = `${this.mapZoom.toFixed(1)}x`;
+      },
+
+      zoomMapByFactor(factor) {
+        this.mapZoom = Math.min(Math.max(this.mapZoom * factor, 1), 24);
+        this.applyMapViewBoxLive();
+      },
+
+      attachInteractiveMapEvents() {
+        const svgEl = document.getElementById('interactive-world-svg');
+        if (!svgEl) return;
+
+        svgEl.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          const factor = e.deltaY < 0 ? 1.25 : 0.8;
+          this.zoomMapByFactor(factor);
+        }, { passive: false });
+
+        svgEl.addEventListener('pointerdown', (e) => {
+          this.pointerCache.push({ id: e.pointerId, x: e.clientX, y: e.clientY });
+          if (this.pointerCache.length === 1) {
+            this.isDraggingMap = true;
+            this.dragMoved = false;
+            this.lastDragPos = { x: e.clientX, y: e.clientY };
+          } else if (this.pointerCache.length === 2) {
+            const dx = this.pointerCache[0].x - this.pointerCache[1].x;
+            const dy = this.pointerCache[0].y - this.pointerCache[1].y;
+            this.prevPinchDist = Math.hypot(dx, dy);
+          }
+        });
+
+        svgEl.addEventListener('pointermove', (e) => {
+          const idx = this.pointerCache.findIndex(p => p.id === e.pointerId);
+          if (idx !== -1) {
+            this.pointerCache[idx].x = e.clientX;
+            this.pointerCache[idx].y = e.clientY;
+          }
+
+          if (this.pointerCache.length === 2) {
+            const dx = this.pointerCache[0].x - this.pointerCache[1].x;
+            const dy = this.pointerCache[0].y - this.pointerCache[1].y;
+            const dist = Math.hypot(dx, dy);
+            if (this.prevPinchDist && this.prevPinchDist > 10) {
+              const scaleFactor = dist / this.prevPinchDist;
+              this.mapZoom = Math.min(Math.max(this.mapZoom * scaleFactor, 1), 24);
+              this.dragMoved = true;
+              this.applyMapViewBoxLive();
+            }
+            this.prevPinchDist = dist;
+          } else if (this.pointerCache.length === 1 && this.isDraggingMap) {
+            const dx = e.clientX - this.lastDragPos.x;
+            const dy = e.clientY - this.lastDragPos.y;
+            if (Math.hypot(dx, dy) > 5) {
+              this.dragMoved = true;
+            }
+            if (this.dragMoved) {
+              const rect = svgEl.getBoundingClientRect();
+              const viewW = 915 / this.mapZoom;
+              const viewH = 420 / this.mapZoom;
+              this.mapCenter.x = Math.min(Math.max(this.mapCenter.x - (dx / rect.width) * viewW, 30), 970);
+              this.mapCenter.y = Math.min(Math.max(this.mapCenter.y - (dy / rect.height) * viewH, 25), 475);
+              this.lastDragPos = { x: e.clientX, y: e.clientY };
+              this.applyMapViewBoxLive();
+            }
+          }
+        });
+
+        const clearPointer = (e) => {
+          this.pointerCache = this.pointerCache.filter(p => p.id !== e.pointerId);
+          if (this.pointerCache.length < 2) this.prevPinchDist = null;
+          if (this.pointerCache.length === 0) {
+            setTimeout(() => { this.isDraggingMap = false; }, 40);
+          }
+        };
+
+        svgEl.addEventListener('pointerup', clearPointer);
+        svgEl.addEventListener('pointercancel', clearPointer);
+        svgEl.addEventListener('pointerleave', clearPointer);
+      },
+
+      handleCountryMapTap(countryId) {
+        if (this.dragMoved) return;
+        this.submitAnswer(countryId);
+      },
+
+      // -----------------------------------------------------------------------
+      // TRIPLE-FALLBACK HD VECTOR FLAG & EMBLEM RENDERERS
+      // -----------------------------------------------------------------------
+      renderFlagVisual(country) {
+        const [c1, c2, c3] = country.colors;
+        const code = country.id.toLowerCase();
+        return `
+          <div class="relative w-64 h-44 sm:w-72 sm:h-48 rounded-2xl overflow-hidden border border-white/30 shadow-2xl bg-[#07090e] flex items-center justify-center mx-auto p-2">
+            <svg viewBox="0 0 180 115" class="w-full h-full object-contain rounded-lg">
+              ${country.flagLayout === 'v3' ? `
+                <rect x="0" y="0" width="60" height="115" fill="${c1}" />
+                <rect x="60" y="0" width="60" height="115" fill="${c2}" />
+                <rect x="120" y="0" width="60" height="115" fill="${c3}" />
+              ` : country.flagLayout === 'h2' ? `
+                <rect x="0" y="0" width="180" height="58" fill="${c1}" />
+                <rect x="0" y="58" width="180" height="57" fill="${c2}" />
+              ` : country.flagLayout === 'sun' ? `
+                <rect x="0" y="0" width="180" height="115" fill="${c1}" />
+                <circle cx="90" cy="57.5" r="26" fill="${c2}" />
+              ` : country.flagLayout === 'cross' ? `
+                <rect x="0" y="0" width="180" height="115" fill="${c1}" />
+                <rect x="52" y="0" width="22" height="115" fill="${c2}" />
+                <rect x="0" y="46" width="180" height="22" fill="${c2}" />
+              ` : `
+                <rect x="0" y="0" width="180" height="38.4" fill="${c1}" />
+                <rect x="0" y="38.3" width="180" height="38.4" fill="${c2}" />
+                <rect x="0" y="76.6" width="180" height="38.4" fill="${c3}" />
+              `}
+            </svg>
+            <img
+              src="https://flagcdn.com/${code}.svg"
+              alt="${country.name}"
+              onerror="if(!this.dataset.fb1){this.dataset.fb1='1';this.src='https://flagcdn.com/w640/${code}.png';}else if(!this.dataset.fb2){this.dataset.fb2='1';this.src='https://cdn.jsdelivr.net/gh/HatScripts/circle-flags@gh-pages/flags/${code}.svg';}else{this.style.display='none';}"
+              class="absolute inset-0 w-full h-full object-contain p-2 bg-[#07090e]"
+            />
+          </div>
+        `;
+      },
+
+      renderEmblemVisual(country) {
+        const [c1, c2, c3] = country.colors;
+        const code = country.id.toLowerCase();
+        return `
+          <div class="flex flex-col items-center gap-3">
+            <div class="relative w-44 h-44 rounded-2xl bg-[#090b10] border border-white/25 p-4 flex items-center justify-center shadow-2xl overflow-hidden">
+              <svg viewBox="0 0 120 120" class="w-32 h-32">
+                <path d="M 28,38 L 12,22 L 18,45 L 10,55 L 26,64 L 22,82 L 38,78" fill="none" stroke="rgba(255,255,255,0.75)" stroke-width="2.2" />
+                <path d="M 92,38 L 108,22 L 102,45 L 110,55 L 94,64 L 98,82 L 82,78" fill="none" stroke="rgba(255,255,255,0.75)" stroke-width="2.2" />
+                <path d="M 42,26 L 46,16 L 53,21 L 60,14 L 67,21 L 74,16 L 78,26 Z" fill="rgba(255,255,255,0.2)" stroke="#ffffff" stroke-width="2" />
+                <path d="M 32,30 H 88 V 62 C 88,84 60,100 60,100 C 60,100 32,84 32,62 Z" fill="#11141c" stroke="#ffffff" stroke-width="2.5" />
+                <path d="M 35,33 H 85 V 52 H 35 Z" fill="${c1}" opacity="0.85" />
+                <path d="M 35,52 H 85 V 70 H 35 Z" fill="${c2}" opacity="0.85" />
+                <path d="M 35,70 H 85 C 80,82 60,94 60,94 C 60,94 40,82 35,70 Z" fill="${c3}" opacity="0.85" />
+                <polygon points="60,38 63,46 72,46 65,51 67,59 60,54 53,59 55,51 48,46 57,46" fill="#ffffff" stroke="#090b10" stroke-width="1" />
+              </svg>
+              <img src="https://mainfacts.com/media/images/coats_of_arms/${code}.png" alt=""
+                onerror="this.style.display='none'"
+                class="absolute inset-0 w-full h-full object-contain p-4 bg-[#090b10]" />
+            </div>
+            <div class="font-mono-tech text-xs text-white/85 bg-white/[0.06] border border-white/15 px-3.5 py-1.5 rounded-lg max-w-md">
+              [ ГЕРБ: ${country.emblemTitle.toUpperCase()} ]
+            </div>
+          </div>
+        `;
+      },
+
+      renderSilhouetteVisual(country) {
+        const d = this.getCountrySvgPath(country.id);
+        const bounds = calculatePathBounds(d, 0.18);
+        return `
+          <div class="relative w-72 h-60 sm:w-80 sm:h-64 rounded-2xl bg-[#06080c] border border-white/25 flex items-center justify-center overflow-hidden mx-auto shadow-2xl">
+            <svg width="100%" height="100%" class="absolute inset-0 pointer-events-none">
+              <rect width="100%" height="100%" fill="url(#radarSubGrid)" />
+              <line x1="50%" y1="0" x2="50%" y2="100%" stroke="rgba(255,255,255,0.12)" stroke-dasharray="4,4" />
+              <line x1="0" y1="50%" x2="100%" y2="50%" stroke="rgba(255,255,255,0.12)" stroke-dasharray="4,4" />
+            </svg>
+            <svg viewBox="${bounds.viewBox}" class="relative z-10 w-full h-full p-5" preserveAspectRatio="xMidYMid meet">
+              <path d="${d}"
+                fill="rgba(248, 250, 252, 0.9)"
+                stroke="#ffffff"
+                stroke-width="${bounds.strokeW}"
+                stroke-linejoin="round"
+                style="filter: drop-shadow(0 0 12px rgba(255,255,255,0.4));" />
+            </svg>
+            <div class="absolute top-2.5 left-3 font-mono-tech text-[9px] text-white/45">
+              SAT_SCAN // REAL_BORDER_VECTOR
+            </div>
+            <div class="absolute bottom-2.5 right-3 font-mono-tech text-[9px] text-white/45">
+              RES: 0.5M // ORBITAL
+            </div>
+          </div>
+        `;
+      },
+
+      // Clean Political Map: NO circles at 1x zoom; microstates appear cleanly only when zoomed in (>= 4.5x)
+      renderPoliticalMap(isInteractiveClick) {
+        const vb = this.getMapViewBoxString();
+        const isZoomedInClass = this.mapZoom >= 4.5 ? 'map-zoomed-in' : '';
+        return `
+          <div class="relative w-full h-80 sm:h-[440px] rounded-2xl bg-[#05080f] border border-white/25 overflow-hidden shadow-2xl">
+            <svg width="100%" height="100%" class="absolute inset-0 pointer-events-none">
+              <rect width="100%" height="100%" fill="url(#radarSubGrid)" />
+            </svg>
+
+            <!-- Compact Zoom Controls + Live Scale Indicator -->
+            <div class="absolute top-3 right-3 z-20 flex items-center gap-1.5 bg-black/80 border border-white/20 p-1.5 rounded-xl backdrop-blur-md">
+              <span id="map-zoom-indicator" class="font-mono-tech text-[11px] text-white/80 px-2">${this.mapZoom.toFixed(1)}x</span>
+              <button type="button" onclick="app.zoomMapByFactor(1.6)" class="tactical-btn px-3 py-1.5 text-xs font-mono-tech font-bold">+ ЗУМ</button>
+              <button type="button" onclick="app.zoomMapByFactor(0.62)" class="tactical-btn px-3 py-1.5 text-xs font-mono-tech font-bold">- ЗУМ</button>
+              <button type="button" onclick="app.resetMapCamera(); app.applyMapViewBoxLive();" class="tactical-btn px-2.5 py-1.5 text-xs font-mono-tech">СБРОС</button>
+            </div>
+
+            <div class="absolute bottom-2.5 left-3 right-3 z-20 flex justify-between items-center pointer-events-none">
+              <div class="font-mono-tech text-[10px] text-white/85 bg-black/80 border border-white/20 px-2.5 py-1 rounded backdrop-blur-sm">
+                ${isInteractiveClick
+                  ? '[ ДВИГАЙТЕ КАРТУ ПАЛЬЦЕМ И ПРИБЛИЖАЙТЕ ДВУМЯ ПАЛЬЦАМИ // НАЖМИТЕ НА СТРАНУ ]'
+                  : '[ ОПРЕДЕЛИТЕ ВЫДЕЛЕННОЕ БЕЛЫМ ГОСУДАРСТВО ]'}
+              </div>
+            </div>
+
+            <svg id="interactive-world-svg" viewBox="${vb}" class="touch-map-viewport ${isZoomedInClass} relative z-10 w-full h-full" preserveAspectRatio="xMidYMid meet">
+              <!-- Continent Relief Base -->
+              ${CONTINENT_BACKDROP_PATHS.map(d => `
+                <path d="${d}" fill="#0d111a" stroke="rgba(255,255,255,0.08)" stroke-width="0.35" vector-effect="non-scaling-stroke" />
+              `).join('')}
+
+              <!-- All 195 Sovereign Countries (NO round dots; synthetic microstates hidden until zoomed >= 4.5x) -->
+              ${COUNTRIES_DB.map(c => {
+                const d = this.getCountrySvgPath(c.id);
+                const isTarget = this.target && c.id === this.target.id;
+                const isHighlightedQuestion = !isInteractiveClick && isTarget;
+                const showReveal = this.feedback && this.feedback.status !== 'recorded';
+                const isCorrectReveal = showReveal && isTarget;
+                const isWrongClick = showReveal && this.feedback.clickedId === c.id && !isTarget;
+
+                const isSyntheticMicro = !this.highResPaths[c.id] && !BUILTIN_GEO_PATHS[c.id];
+                const visibilityClass = (isSyntheticMicro && !isHighlightedQuestion && !isCorrectReveal && !isWrongClick)
+                  ? 'microstate-zoom-only'
+                  : '';
+
+                let fill = '#1a2130';
+                let stroke = 'rgba(255,255,255,0.42)';
+
+                if (isHighlightedQuestion) {
+                  fill = '#ffffff';
+                  stroke = '#ffffff';
+                }
+                if (isWrongClick) {
+                  fill = '#ef4444';
+                  stroke = '#fca5a5';
+                }
+                if (isCorrectReveal) {
+                  fill = '#22c55e';
+                  stroke = '#bbf7d0';
+                }
+
+                return `
+                  <g ${isInteractiveClick ? `onclick="app.handleCountryMapTap('${c.id}')"` : ''} class="${isInteractiveClick ? 'cursor-pointer' : ''} ${visibilityClass}">
+                    <path d="${d}"
+                      fill="${fill}"
+                      stroke="${stroke}"
+                      stroke-width="0.9"
+                      vector-effect="non-scaling-stroke"
+                      stroke-linejoin="round"
+                      class="transition-colors duration-100 ${isInteractiveClick ? 'hover:fill-white/75 active:fill-white' : ''}"
+                    />
+                  </g>
+                `;
+              }).join('')}
+            </svg>
+          </div>
+        `;
+      },
+
+      // -----------------------------------------------------------------------
+      // MAIN VIEWPORT RENDERER
+      // -----------------------------------------------------------------------
+      render() {
+        const root = document.getElementById('app-viewport');
+        if (!root) return;
+
+        // =====================================================================
+        // SCREEN 1: 2x2 CONSTRUCTOR MENU
+        // =====================================================================
+        if (this.screen === 'menu') {
+          const poolCount = this.getFilteredPool().length;
+
+          const regionsList = [
+            { id: 'world', code: '195 СТРАН', label: 'Весь мир', icon: 'world', spanFull: true },
+            { id: 'postsov', code: '15 СТРАН', label: 'Постсоветское (СССР)', icon: 'postsov' },
+            { id: 'europe', code: '44 СТРАНЫ', label: 'Европа', icon: 'compass' },
+            { id: 'asia', code: '48 СТРАН', label: 'Азия', icon: 'compass' },
+            { id: 'americas', code: '35 СТРАН', label: 'Америка', icon: 'compass' },
+            { id: 'africa', code: '54 СТРАНЫ', label: 'Африка', icon: 'compass' },
+            { id: 'oceania', code: '14 СТРАН', label: 'Океания', icon: 'compass' }
+          ];
+
+          const questionsList = [
+            { id: 'silhouette', code: 'Q_SIL', label: 'Силуэт границ', icon: 'silhouette' },
+            { id: 'flag', code: 'Q_FLG', label: 'Флаг страны', icon: 'flag' },
+            { id: 'emblem', code: 'Q_EMB', label: 'Герб страны', icon: 'emblem' },
+            { id: 'map_highlight', code: 'Q_MAP', label: 'Положение на карте', icon: 'map_pin' },
+            { id: 'capital', code: 'Q_CAP', label: 'Столица', icon: 'capital' },
+            { id: 'name', code: 'Q_NAM', label: 'Название страны', icon: 'text' }
+          ];
+
+          const answersList = [
+            { id: 'choice', code: 'ANS_04', label: 'Выбрать из 4 вариантов (Тест)', desc: '4 случайных варианта (База +100, бонус за скорость и комбо)', icon: 'flag' },
+            { id: 'input', code: 'ANS_IN', label: 'Вписать название вручную', desc: 'Свободный ввод с автоподсказкой и прощением опечаток', icon: 'text' },
+            { id: 'map_click', code: 'ANS_MP', label: 'Указать на политической карте', desc: 'Чистая карта мира без точек с зумом до 24x', icon: 'map_pin' }
+          ];
+
+          const modesList = [
+            { id: 'solo', code: 'SOLO', label: 'Одиночный режим (По раундам)', desc: `Классический матч (${this.totalRounds} раундов): очки за точность, скорость и комбо`, icon: 'world' },
+            { id: 'blitz', code: 'BLITZ_60S', label: 'Блиц-режим (На время — 60 сек)', desc: 'Скоростной штурм: максимум очков и комбо за 60 секунд!', icon: 'blitz' },
+            { id: 'local_1v1', code: '1V1_PHONE', label: 'Дуэль 1 на 1 (На одном телефоне)', desc: `По очереди (${this.totalRounds} раундов): побеждает самый точный и быстрый!`, icon: 'duel' },
+            { id: 'online_1v1', code: '1V1_NET', label: 'Онлайн Дуэль 1 на 1 (По коду)', desc: `Синхронная дуэль (${this.totalRounds} раундов): хост задает режим и длину матча`, icon: 'compass' }
+          ];
+
+          const roundCounts = [10, 20, 50, 100];
+
+          root.innerHTML = `
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+
+              <section class="bento-card p-5 sm:p-6">
+                <div class="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
+                  <span class="font-mono-tech text-xs text-white/60 tracking-widest">[ 01 // ГЕОГРАФИЧЕСКИЙ СЕКТОР ]</span>
+                  <span class="font-mono-tech text-xs text-white font-bold">ПУЛ: ${poolCount} СТРАН</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  ${regionsList.map(r => {
+                    const active = this.region === r.id;
+                    return `
+                      <button type="button" onclick="app.setOption('region', '${r.id}')"
+                        class="tactical-btn ${active ? 'active' : ''} ${r.spanFull ? 'sm:col-span-2' : ''} p-3.5 flex items-center justify-between text-left">
+                        <div class="flex items-center gap-3">
+                          ${getTacticalIcon(r.icon, active, 22)}
+                          <span class="font-bold text-sm">${r.label}</span>
+                        </div>
+                        <span class="font-mono-tech text-[10px] opacity-60">${r.code}</span>
+                      </button>
+                    `;
+                  }).join('')}
+                </div>
+              </section>
+
+              <section class="bento-card p-5 sm:p-6">
+                <div class="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
+                  <span class="font-mono-tech text-xs text-white/60 tracking-widest">[ 02 // ЧТО ДАНО (ЗАДАНИЕ) ]</span>
+                  <span class="font-mono-tech text-xs text-white/40">INPUT_VECTOR</span>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  ${questionsList.map(q => {
+                    const active = this.questionType === q.id;
+                    return `
+                      <button type="button" onclick="app.setOption('questionType', '${q.id}')"
+                        class="tactical-btn ${active ? 'active' : ''} p-3.5 flex items-center justify-between text-left">
+                        <div class="flex items-center gap-3">
+                          ${getTacticalIcon(q.icon, active, 22)}
+                          <span class="font-bold text-sm">${q.label}</span>
+                        </div>
+                        <span class="font-mono-tech text-[10px] opacity-60">${q.code}</span>
+                      </button>
+                    `;
+                  }).join('')}
+                </div>
+              </section>
+
+              <section class="bento-card p-5 sm:p-6">
+                <div class="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
+                  <span class="font-mono-tech text-xs text-white/60 tracking-widest">[ 03 // КАК ОТВЕЧАЕМ (МЕХАНИКА) ]</span>
+                  <span class="font-mono-tech text-xs text-white/40">RESPONSE_PROTOCOL</span>
+                </div>
+                <div class="space-y-2.5">
+                  ${answersList.map(a => {
+                    const active = this.answerType === a.id;
+                    return `
+                      <button type="button" onclick="app.setOption('answerType', '${a.id}')"
+                        class="tactical-btn ${active ? 'active' : ''} w-full p-3.5 flex items-center justify-between text-left">
+                        <div class="flex items-center gap-3.5">
+                          ${getTacticalIcon(a.icon, active, 22)}
+                          <div>
+                            <div class="font-bold text-sm">${a.label}</div>
+                            <div class="text-[11px] opacity-70 mt-0.5">${a.desc}</div>
+                          </div>
+                        </div>
+                        <span class="font-mono-tech text-[10px] opacity-60 ml-2">${a.code}</span>
+                      </button>
+                    `;
+                  }).join('')}
+                </div>
+              </section>
+
+              <section class="bento-card p-5 sm:p-6">
+                <div class="flex items-center justify-between pb-3 mb-3 border-b border-white/10">
+                  <span class="font-mono-tech text-xs text-white/60 tracking-widest">[ 04 // РЕЖИМ ИГРЫ И КОЛИЧЕСТВО РАУНДОВ ]</span>
+                  <span class="font-mono-tech text-xs text-emerald-400 font-bold">COMBO + SPEED</span>
+                </div>
+
+                <!-- Round Count Selector: 10 / 20 / 50 / 100 -->
+                <div class="mb-3 p-2.5 rounded-xl bg-black/40 border border-white/15 flex flex-wrap items-center justify-between gap-2">
+                  <span class="font-mono-tech text-[11px] text-white/75 pl-1">КОЛИЧЕСТВО РАУНДОВ:</span>
+                  <div class="flex items-center gap-1.5">
+                    ${roundCounts.map(cnt => {
+                      const activeCnt = this.totalRounds === cnt && this.matchMode !== 'blitz';
+                      return `
+                        <button type="button" onclick="app.setOption('totalRounds', ${cnt})"
+                          class="tactical-btn ${activeCnt ? 'active' : ''} px-3 py-1.5 text-xs font-mono-tech font-bold">
+                          ${cnt}
+                        </button>
+                      `;
+                    }).join('')}
+                  </div>
+                </div>
+
+                <div class="space-y-2">
+                  ${modesList.map(m => {
+                    const active = this.matchMode === m.id;
+                    return `
+                      <button type="button" onclick="app.setOption('matchMode', '${m.id}')"
+                        class="tactical-btn ${active ? 'active' : ''} w-full p-3 flex items-center justify-between text-left">
+                        <div class="flex items-center gap-3.5">
+                          ${getTacticalIcon(m.icon, active, 22)}
+                          <div>
+                            <div class="font-bold text-sm">${m.label}</div>
+                            <div class="text-[11px] opacity-70 mt-0.5">${m.desc}</div>
+                          </div>
+                        </div>
+                        <span class="font-mono-tech text-[10px] opacity-60 ml-2">${m.code}</span>
+                      </button>
+                    `;
+                  }).join('')}
+                </div>
+              </section>
+
+            </div>
+
+            <div class="bento-card p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <div class="font-mono-tech text-[10px] text-white/50 tracking-widest">
+                  [ ACTIVE MATRIX // ${this.matchMode === 'blitz' ? 'БЛИЦ 60 СЕК' : `${this.totalRounds} РАУНДОВ`} // +100 БАЗА + ДО +50 СКОРОСТЬ + СТРИК ]
+                </div>
+                <div class="font-oswald text-xl sm:text-2xl uppercase tracking-wide text-white mt-1">
+                  ${regionsList.find(r => r.id === this.region)?.label} //
+                  ${questionsList.find(q => q.id === this.questionType)?.label} →
+                  ${answersList.find(a => a.id === this.answerType)?.label}
+                </div>
+              </div>
+
+              ${this.matchMode === 'online_1v1' ? `
+                <button type="button" onclick="app.openLobby()" class="cta-white-btn w-full sm:w-auto px-9 py-4 text-sm sm:text-base font-oswald uppercase tracking-wider">
+                  ОТКРЫТЬ ОНЛАЙН-ЛОББИ 1 НА 1 →
+                </button>
+              ` : `
+                <button type="button" onclick="app.startMatch()" class="cta-white-btn w-full sm:w-auto px-10 py-4 text-sm sm:text-base font-oswald uppercase tracking-wider">
+                  ${this.matchMode === 'blitz' ? 'ЗАПУСТИТЬ БЛИЦ (60 СЕК) →' : `ЗАПУСТИТЬ СЕССИЮ (${this.totalRounds} РАУНДОВ) →`}
+                </button>
+              `}
+            </div>
+          `;
+          return;
+        }
+
+        // =====================================================================
+        // SCREEN 2: ONLINE 1V1 ROOM CODE LOBBY (HOST DEFINES SETTINGS)
+        // =====================================================================
+        if (this.screen === 'lobby') {
+          root.innerHTML = `
+            <div class="bento-card max-w-xl mx-auto p-6 sm:p-8 text-center space-y-6 my-4">
+              <div class="font-mono-tech text-xs text-white/60 tracking-widest">[ ORBITAL WEBRTC LINK // 1V1 DUEL ROOM // ${this.totalRounds} РАУНДОВ ]</div>
+              <h2 class="font-oswald text-3xl sm:text-4xl uppercase tracking-wider text-white">ОНЛАЙН-ДУЭЛЬ 1 НА 1</h2>
+
+              <div class="p-5 sm:p-6 rounded-2xl bg-black/55 border border-white/25 space-y-2">
+                <div class="font-mono-tech text-xs text-white/70">ВЫ СОЗДАЛИ КОМНАТУ (${this.totalRounds} РАУНДОВ — ВАШИ НАСТРОЙКИ БУДУТ У ОБОИХ ИГРОКОВ):</div>
+                <div class="font-mono-tech text-5xl font-black tracking-[0.25em] text-white py-1">${this.roomCode}</div>
+                <div class="font-mono-tech text-[11px] text-emerald-400">${this.peerStatus}</div>
+              </div>
+
+              <div class="font-mono-tech text-xs text-white/40">— ИЛИ ПОДКЛЮЧИТЕСЬ К КОМНАТЕ ДРУГА —</div>
+
+              <div class="p-5 rounded-2xl bg-black/40 border border-white/15 space-y-3">
+                <div class="font-mono-tech text-[11px] text-white/70">
+                  ВВЕДИТЕ 4-ЗНАЧНЫЙ КОД ДРУГА (НАСТРОЙКИ РЕЖИМА И ЧИСЛО РАУНДОВ ЗАГРУЗЯТСЯ АВТОМАТИЧЕСКИ ОТ СОЗДАТЕЛЯ):
+                </div>
+                <div class="flex gap-2.5">
+                  <input id="join-room-input" type="text" maxlength="4" placeholder="Код (напр. 4815)"
+                    class="flex-1 bg-black/70 border border-white/30 rounded-xl px-4 py-3.5 text-center font-mono-tech text-xl font-bold text-white focus:outline-none focus:border-white" />
+                  <button type="button" onclick="app.joinPeerRoom(document.getElementById('join-room-input').value)" class="cta-white-btn px-6 py-3.5 text-xs font-mono-tech uppercase">
+                    ВОЙТИ В ИГРУ
+                  </button>
+                </div>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        // =====================================================================
+        // SCREEN 3: ACTIVE GAMEPLAY TERMINAL
+        // =====================================================================
+        if (this.screen === 'play' && this.target) {
+          if (this.matchMode === 'local_1v1' && this.localHandoverScreen) {
+            root.innerHTML = `
+              <div class="bento-card max-w-lg mx-auto p-8 sm:p-10 text-center space-y-6 my-8">
+                <div class="w-16 h-16 rounded-2xl bg-white text-black flex items-center justify-center mx-auto shadow-[0_0_28px_rgba(255,255,255,0.4)]">
+                  ${getTacticalIcon('duel', true, 32)}
+                </div>
+                <div class="font-mono-tech text-xs text-emerald-400 tracking-widest">
+                  [ ОТВЕТ ИГРОКА 1 ЗАПИСАН И ЗАСЕКРЕЧЕН ]
+                </div>
+                <h2 class="font-oswald text-3xl sm:text-4xl uppercase tracking-wider text-white">
+                  ПЕРЕДАЙТЕ ТЕЛЕФОН ИГРОКУ 2
+                </h2>
+                <p class="text-sm text-white/75 leading-relaxed">
+                  Сейчас <strong>Игрок 2</strong> ответит на этот же вопрос (Раунд ${this.round} из ${this.totalRounds}). Таймер скорости для Игрока 2 запустится только после нажатия кнопки ниже!
+                </p>
+                <button type="button" onclick="app.confirmHandoverToPlayer2()" class="cta-white-btn w-full py-4 text-sm sm:text-base font-oswald uppercase tracking-wider">
+                  Я ИГРОК 2 — ПОКАЗАТЬ ВОПРОС →
+                </button>
+              </div>
+            `;
+            return;
+          }
+
+          const c = this.target;
+
+          let questionHtml = '';
+          if (this.questionType === 'silhouette') questionHtml = this.renderSilhouetteVisual(c);
+          else if (this.questionType === 'flag') questionHtml = this.renderFlagVisual(c);
+          else if (this.questionType === 'emblem') questionHtml = this.renderEmblemVisual(c);
+          else if (this.questionType === 'map_highlight') questionHtml = this.renderPoliticalMap(false);
+          else if (this.questionType === 'capital') {
+            questionHtml = `
+              <div class="py-6 px-8 rounded-2xl bg-black/55 border border-white/20 inline-flex items-center gap-4">
+                ${getTacticalIcon('capital', false, 34)}
+                <div class="text-left">
+                  <div class="font-mono-tech text-[10px] text-white/50">СТОЛИЦА ГОСУДАРСТВА:</div>
+                  <div class="font-oswald text-3xl sm:text-5xl uppercase tracking-wider text-white">${c.capital}</div>
+                </div>
+              </div>
+            `;
+          } else if (this.questionType === 'name') {
+            questionHtml = `
+              <div class="py-6 px-10 rounded-2xl bg-black/55 border border-white/20 inline-block">
+                <div class="font-mono-tech text-[10px] text-white/50 mb-1">ЦЕЛЕВОЕ ГОСУДАРСТВО:</div>
+                <div class="font-oswald text-3xl sm:text-5xl uppercase tracking-wider text-white">${c.name}</div>
+              </div>
+            `;
+          }
+
+          let answerHtml = '';
+          if (this.answerType === 'choice') {
+            answerHtml = `
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-6">
+                ${this.choices.map((opt, idx) => {
+                  const showReveal = this.feedback && this.feedback.status !== 'recorded';
+                  const isRight = showReveal && opt.id === c.id;
+                  const isWrong = showReveal && this.feedback.clickedId === opt.id && opt.id !== c.id;
+                  const isRecordedClick = this.feedback && this.feedback.status === 'recorded' && this.feedback.clickedId === opt.id;
+
+                  let extraStyle = '';
+                  if (isRight || isRecordedClick) {
+                    extraStyle = 'background:#ffffff !important; color:#08090c !important; border-color:#ffffff !important; box-shadow:0 0 28px rgba(255,255,255,0.45);';
+                  }
+                  if (isWrong) {
+                    extraStyle = 'background:rgba(239,68,68,0.28) !important; border-color:#ef4444 !important; color:#fecaca !important;';
+                  }
+
+                  const labelText = (this.questionType === 'name') ? `Столица: ${opt.capital}` : opt.name;
+                  return `
+                    <button type="button" onclick="app.submitAnswer('${opt.id}')"
+                      style="${extraStyle}"
+                      class="tactical-btn p-4 sm:p-5 flex items-center justify-between text-left font-bold text-base sm:text-lg">
+                      <span>${labelText}</span>
+                      <span class="font-mono-tech text-xs opacity-50">[0${idx + 1}]</span>
+                    </button>
+                  `;
+                }).join('')}
+              </div>
+            `;
+          } else if (this.answerType === 'input') {
+            answerHtml = `
+              <div class="mt-6 max-w-xl mx-auto">
+                <form onsubmit="app.handleTextForm(event)" class="flex gap-2.5">
+                  <input id="manual-country-input" type="text" autocomplete="off"
+                    oninput="app.updateAutocomplete(this.value)"
+                    placeholder="Введите название государства..."
+                    class="flex-1 bg-black/70 border border-white/30 rounded-xl px-4 py-4 text-white font-semibold text-base focus:outline-none focus:border-white" />
+                  <button type="submit" class="cta-white-btn px-6 py-4 text-xs font-mono-tech uppercase">
+                    ОТВЕТИТЬ
+                  </button>
+                </form>
+                <div id="autocomplete-box" class="flex flex-wrap gap-2 mt-3 justify-center"></div>
+              </div>
+            `;
+          } else if (this.answerType === 'map_click') {
+            answerHtml = `<div class="mt-5">${this.renderPoliticalMap(true)}</div>`;
+          }
+
+          root.innerHTML = `
+            <div class="space-y-4">
+              <!-- HUD ROUND STATUS -->
+              <div class="bento-card px-5 py-3.5 flex flex-wrap items-center justify-between gap-3 font-mono-tech text-xs">
+                ${this.matchMode === 'blitz' ? `
+                  <div class="flex items-center gap-3">
+                    <span class="px-3 py-1 rounded-lg bg-white text-black font-extrabold">
+                      ТАЙМЕР БЛИЦА: <span id="blitz-timer-display">${this.blitzTimeLeft} СЕК</span>
+                    </span>
+                    <span class="text-white/70">ВОПРОС #${this.round}</span>
+                  </div>
+                ` : `
+                  <div>РАУНД: <strong class="text-white text-sm">${this.round} / ${this.totalRounds}</strong></div>
+                `}
+
+                ${this.matchMode === 'local_1v1' ? `
+                  <div class="flex items-center gap-3">
+                    <span class="px-3 py-1 rounded-lg bg-white text-black font-extrabold">
+                      СЕЙЧАС ОТВЕЧАЕТ: ИГРОК ${this.activeTurn}
+                    </span>
+                    <span class="text-white/60 hidden sm:inline">[ СЧЕТ СКРЫТ ДО ФИНАЛА ]</span>
+                  </div>
+                ` : this.matchMode === 'online_1v1' ? `
+                  <div class="flex items-center gap-4">
+                    <span>СЕРИЯ: <strong class="text-emerald-400">×${this.streak}</strong></span>
+                    <span>ВАШИ ОЧКИ: <strong class="text-white text-sm">${this.score} PTS</strong></span>
+                    <span class="text-white/50 hidden sm:inline">[ СЧЕТ СОПЕРНИКА СКРЫТ ]</span>
+                  </div>
+                ` : `
+                  <div class="flex items-center gap-5">
+                    <span>КОМБО: <strong class="text-emerald-400">×${this.streak}</strong></span>
+                    <span>ОЧКИ: <strong class="text-white text-sm">${this.score} PTS</strong></span>
+                  </div>
+                `}
+              </div>
+
+              <!-- MAIN QUESTION & ANSWER TERMINAL -->
+              <div class="bento-card p-5 sm:p-8 text-center">
+                <div class="font-mono-tech text-[11px] text-white/50 tracking-[0.2em] uppercase mb-4">
+                  ${this.matchMode === 'local_1v1'
+                    ? `[ ХОД ИГРОКА ${this.activeTurn} // ЧЕМ БЫСТРЕЕ ОТВЕТ — ТЕМ БОЛЬШЕ ОЧКОВ ]`
+                    : `[ БАЗА +100 // СКОРОСТЬ ДО +50 // КОМБО-СТРИК +20× ]`}
+                </div>
+
+                ${questionHtml}
+
+                ${this.feedback && this.feedback.status !== 'recorded' ? `
+                  <div class="mt-5 inline-flex flex-col sm:flex-row items-center gap-2 px-5 py-2.5 rounded-xl font-mono-tech text-xs sm:text-sm font-bold border ${
+                    this.feedback.status === 'correct'
+                      ? 'bg-white text-black border-white shadow-[0_0_25px_rgba(255,255,255,0.4)]'
+                      : 'bg-rose-950/90 text-rose-200 border-rose-500'
+                  }">
+                    ${this.feedback.status === 'correct'
+                      ? `<span>✓ ВЕРНО (+${this.feedback.totalGain} PTS за ${this.feedback.elapsedSec}с)!</span>
+                         <span class="text-[11px] opacity-75">[База +100 | Скорость +${this.feedback.speedBonus}${this.feedback.streakBonus > 0 ? ` | Комбо +${this.feedback.streakBonus}` : ''}] — ${c.name}</span>`
+                      : `<span>✕ ПРОМАХ (0 PTS — СЕРИЯ СБРОШЕНА)! ПРАВИЛЬНО: ${c.name.toUpperCase()} (${c.capital})</span>`}
+                  </div>
+                ` : ''}
+
+                ${this.feedback && this.feedback.status === 'recorded' ? `
+                  <div class="mt-5 inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-mono-tech text-xs sm:text-sm font-bold bg-white text-black border border-white">
+                    ✓ ОТВЕТ ИГРОКА 2 ПРИНЯТ // ПЕРЕХОД К СЛЕДУЮЩЕМУ РАУНДУ...
+                  </div>
+                ` : ''}
+
+                ${answerHtml}
+              </div>
+            </div>
+          `;
+
+          if (this.questionType === 'map_highlight' || this.answerType === 'map_click') {
+            this.attachInteractiveMapEvents();
+          }
+          if (this.answerType === 'input' && !this.feedback) {
+            const inp = document.getElementById('manual-country-input');
+            if (inp) inp.focus();
+          }
+          return;
+        }
+
+        // =====================================================================
+        // SCREEN 4: MATCH SUMMARY (WITH ONLINE WAITING & FINAL SCORE REVEAL)
+        // =====================================================================
+        if (this.screen === 'summary') {
+          let summaryBody = '';
+
+          if (this.matchMode === 'solo' || this.matchMode === 'blitz') {
+            summaryBody = `
+              <div class="p-6 rounded-2xl bg-black/55 border border-white/20 space-y-2">
+                <div class="font-mono-tech text-xs text-white/60">
+                  ${this.matchMode === 'blitz'
+                    ? `ИТОГ БЛИЦА ЗА 60 СЕКУНД (ТОЧНЫХ ОТВЕТОВ: ${this.correctCount})`
+                    : `ВАШ ИТОГОВЫЙ СЧЁТ (ТОЧНОСТЬ: ${this.correctCount} ИЗ ${this.totalRounds})`}
+                </div>
+                <div class="font-mono-tech text-5xl font-black text-white">${this.score} PTS</div>
+              </div>
+            `;
+          } else if (this.matchMode === 'local_1v1') {
+            const winnerText = this.p1Score > this.p2Score
+              ? 'ПОБЕДИЛ ИГРОК 1!'
+              : this.p2Score > this.p1Score
+              ? 'ПОБЕДИЛ ИГРОК 2!'
+              : 'АБСОЛЮТНАЯ НИЧЬЯ!';
+            summaryBody = `
+              <div class="font-oswald text-2xl text-emerald-400 uppercase tracking-wider">${winnerText}</div>
+              <div class="grid grid-cols-2 gap-4">
+                <div class="p-5 rounded-2xl bg-black/55 border ${this.p1Score >= this.p2Score ? 'border-white' : 'border-white/15'}">
+                  <div class="font-mono-tech text-xs text-white/60">ИГРОК 1 (${this.p1Correct}/${this.totalRounds})</div>
+                  <div class="font-mono-tech text-4xl font-black text-white mt-1">${this.p1Score}</div>
+                </div>
+                <div class="p-5 rounded-2xl bg-black/55 border ${this.p2Score >= this.p1Score ? 'border-white' : 'border-white/15'}">
+                  <div class="font-mono-tech text-xs text-white/60">ИГРОК 2 (${this.p2Correct}/${this.totalRounds})</div>
+                  <div class="font-mono-tech text-4xl font-black text-white mt-1">${this.p2Score}</div>
+                </div>
+              </div>
+            `;
+          } else if (this.matchMode === 'online_1v1') {
+            if (!this.opponentFinished) {
+              summaryBody = `
+                <div class="p-5 rounded-2xl bg-black/55 border border-white/25">
+                  <div class="font-mono-tech text-xs text-white/60">ВАШ ИТОГОВЫЙ СЧЁТ (${this.correctCount}/${this.totalRounds})</div>
+                  <div class="font-mono-tech text-4xl font-black text-white mt-1">${this.score} PTS</div>
+                </div>
+                <div class="p-5 rounded-2xl bg-black/40 border border-white/15 space-y-2">
+                  <div class="w-3 h-3 rounded-full bg-emerald-400 animate-ping mx-auto"></div>
+                  <div class="font-mono-tech text-xs text-emerald-400 font-bold">
+                    ОЖИДАНИЕ ЗАВЕРШЕНИЯ КАТКИ ВТОРЫМ ИГРОКОМ...
+                  </div>
+                  <div class="text-xs text-white/60">
+                    Как только соперник ответит на ${this.totalRounds}-й вопрос, здесь автоматически появится его настоящий счёт!
+                  </div>
+                </div>
+              `;
+            } else {
+              const winOnline = this.score > this.opponentFinalScore
+                ? 'ВЫ ПОБЕДИЛИ В ОНЛАЙН-ДУЭЛИ!'
+                : this.score < this.opponentFinalScore
+                ? 'ПОБЕДИЛ СОПЕРНИК!'
+                : 'БОЕВАЯ НИЧЬЯ!';
+              summaryBody = `
+                <div class="font-oswald text-2xl text-emerald-400 uppercase tracking-wider">${winOnline}</div>
+                <div class="grid grid-cols-2 gap-4">
+                  <div class="p-5 rounded-2xl bg-black/55 border ${this.score >= this.opponentFinalScore ? 'border-white' : 'border-white/15'}">
+                    <div class="font-mono-tech text-xs text-white/60">ВЫ (${this.correctCount}/${this.totalRounds})</div>
+                    <div class="font-mono-tech text-4xl font-black text-white mt-1">${this.score}</div>
+                  </div>
+                  <div class="p-5 rounded-2xl bg-black/55 border ${this.opponentFinalScore >= this.score ? 'border-white' : 'border-white/15'}">
+                    <div class="font-mono-tech text-xs text-white/60">СОПЕРНИК (${this.opponentCorrectCount}/${this.totalRounds})</div>
+                    <div class="font-mono-tech text-4xl font-black text-white mt-1">${this.opponentFinalScore}</div>
+                  </div>
+                </div>
+              `;
+            }
+          }
+
+          root.innerHTML = `
+            <div class="bento-card max-w-lg mx-auto p-8 text-center space-y-6 my-6">
+              <div class="w-16 h-16 rounded-2xl bg-white text-black flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(255,255,255,0.35)]">
+                ${getTacticalIcon('emblem', true, 34)}
+              </div>
+              <div class="font-mono-tech text-xs text-white/50 tracking-widest">[ ОТЧЕТ О ЗАВЕРШЕНИИ СЕССИИ ]</div>
+              <h2 class="font-oswald text-4xl uppercase tracking-wider text-white">ИТОГИ МАТЧА</h2>
+
+              ${summaryBody}
+
+              <div class="flex gap-3">
+                ${this.matchMode !== 'online_1v1' ? `
+                  <button type="button" onclick="app.startMatch()" class="cta-white-btn flex-1 py-4 text-xs font-mono-tech uppercase">
+                    ИГРАТЬ СНОВА
+                  </button>
+                ` : ''}
+                <button type="button" onclick="app.showMenu()" class="tactical-btn flex-1 py-4 text-xs font-mono-tech font-bold uppercase">
+                  В КОНСТРУКТОР
+                </button>
+              </div>
+            </div>
+          `;
+        }
+      }
+    };
+
+    window.onload = () => app.init();
+  </script>
+</body>
+</html>
